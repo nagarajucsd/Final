@@ -7,7 +7,7 @@ const attendanceSchema = new mongoose.Schema({
     required: true
   },
   date: {
-    type: Date,
+    type: String, // Store as YYYY-MM-DD string to avoid timezone issues
     required: true
   },
   status: {
@@ -19,13 +19,25 @@ const attendanceSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  clockInTimestamp: {
+    type: Date,
+    default: null
+  },
   clockOut: {
     type: String,
+    default: null
+  },
+  clockOutTimestamp: {
+    type: Date,
     default: null
   },
   workHours: {
     type: String,
     default: null
+  },
+  workMinutes: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true,

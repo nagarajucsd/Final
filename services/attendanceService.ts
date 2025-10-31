@@ -88,4 +88,13 @@ export const attendanceService = {
     const response = await api.get('/attendance/today');
     return response.data ? normalizeAttendance(response.data) : null;
   },
+
+  // Get weekly work hours for employee
+  async getWeeklyHours(employeeId: string): Promise<{ totalMinutes: number; totalHours: string; weekStart: string; records: AttendanceRecord[] }> {
+    const response = await api.get(`/attendance/weekly/${employeeId}`);
+    return {
+      ...response.data,
+      records: response.data.records.map(normalizeAttendance)
+    };
+  },
 };

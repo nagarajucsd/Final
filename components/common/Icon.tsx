@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type IconName = 'dashboard' | 'users' | 'briefcase' | 'cash' | 'chart' | 'cog' | 'database' | 'calendar' | 'check' | 'clock' | 'user' | 'bell' | 'menu' | 'x' | 'camera' | 'mail' | 'lock' | 'shield' | 'key' | 'alert-triangle' | 'alert-circle' | 'info' | 'copy' | 'download';
+export type IconName = 'dashboard' | 'users' | 'briefcase' | 'cash' | 'chart' | 'cog' | 'database' | 'calendar' | 'check' | 'clock' | 'user' | 'bell' | 'menu' | 'x' | 'camera' | 'mail' | 'lock' | 'shield' | 'key' | 'alert-triangle' | 'alert-circle' | 'info' | 'copy' | 'download' | 'clipboard' | 'plus';
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   name: IconName;
@@ -33,6 +33,8 @@ const Icon: React.FC<IconProps> = ({ name, ...props }) => {
     info: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
     copy: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />,
     download: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />,
+    clipboard: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />,
+    plus: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />,
   };
 
   return (

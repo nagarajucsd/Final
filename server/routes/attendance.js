@@ -59,10 +59,13 @@ router.post('/', protect, async (req, res) => {
   try {
     const { employeeId, date, status, clockIn } = req.body;
 
+    // Ensure date is in YYYY-MM-DD format
+    const dateString = date.includes('T') ? date.split('T')[0] : date;
+
     // Check if attendance already exists for this employee and date
     const existingAttendance = await Attendance.findOne({
       employeeId,
-      date: new Date(date)
+      date: dateString
     });
 
     if (existingAttendance) {
@@ -71,7 +74,7 @@ router.post('/', protect, async (req, res) => {
 
     const attendance = await Attendance.create({
       employeeId,
-      date: new Date(date),
+      date: dateString,
       status: status || 'Present',
       clockIn: clockIn || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
     });
@@ -118,14 +121,15 @@ router.put('/:id', protect, async (req, res) => {
 // @access  Private
 router.post('/clock-out', protect, async (req, res) => {
   try {
-    const { employeeId, clockOut, workHours } = req.body;
+    const { employeeId, clockOut, workHours, workMinutes } = req.body;
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get today's date as string (YYYY-MM-DD)
+    const now = new Date();
+    const todayString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     const attendance = await Attendance.findOne({
       employeeId,
-      date: today
+      date: todayString
     });
 
     if (!attendance) {
@@ -137,7 +141,9 @@ router.post('/clock-out', protect, async (req, res) => {
     }
 
     attendance.clockOut = clockOut;
+    attendance.clockOutTimestamp = now;
     attendance.workHours = workHours;
+    attendance.workMinutes = workMinutes || 0;
 
     const updatedAttendance = await attendance.save();
     const populatedAttendance = await Attendance.findById(updatedAttendance._id).populate('employeeId');
@@ -146,6 +152,46 @@ router.post('/clock-out', protect, async (req, res) => {
   } catch (error) {
     console.error('Clock out error:', error);
     res.status(500).json({ message: 'Server error clocking out' });
+  }
+});
+
+// @route   GET /api/attendance/weekly/:employeeId
+// @desc    Get weekly work hours for employee
+// @access  Private
+router.get('/weekly/:employeeId', protect, async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    
+    // Get start of current week (Monday)
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+    const monday = new Date(now.getFullYear(), now.getMonth(), diff);
+    const mondayString = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+    
+    // Get all attendance records for this week
+    const weekAttendance = await Attendance.find({
+      employeeId,
+      date: { $gte: mondayString }
+    }).sort({ date: 1 });
+    
+    // Calculate total work minutes
+    let totalMinutes = 0;
+    weekAttendance.forEach(record => {
+      if (record.workMinutes) {
+        totalMinutes += record.workMinutes;
+      }
+    });
+    
+    res.json({
+      totalMinutes,
+      totalHours: (totalMinutes / 60).toFixed(2),
+      weekStart: mondayString,
+      records: weekAttendance
+    });
+  } catch (error) {
+    console.error('Get weekly hours error:', error);
+    res.status(500).json({ message: 'Server error fetching weekly hours' });
   }
 });
 

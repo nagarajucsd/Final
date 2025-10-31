@@ -20,6 +20,7 @@ interface DashboardPageProps {
   attendanceRecords: AttendanceRecord[];
   leaveRequests: LeaveRequest[];
   todayAttendanceRecord: AttendanceRecord | null;
+  onClockIn: () => void;
   onClockOut: () => void;
   weeklyAccumulatedMs: number;
   isWeeklyTimerActive: boolean;
@@ -117,8 +118,8 @@ const AdminDashboard: React.FC<DashboardPageProps> = ({ user, employees, departm
 
         loadDashboardData();
         
-        // Refresh data every 10 seconds for real-time updates
-        const interval = setInterval(loadDashboardData, 10 * 1000);
+        // Refresh data every 5 seconds for real-time updates
+        const interval = setInterval(loadDashboardData, 5 * 1000);
         return () => clearInterval(interval);
     }, []); // Empty dependency array - only load once and use interval for updates
 

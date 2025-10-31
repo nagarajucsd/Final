@@ -65,8 +65,11 @@ export interface AttendanceRecord {
   date: string;
   status: AttendanceStatus;
   clockIn?: string;
+  clockInTimestamp?: Date | string;
   clockOut?: string;
+  clockOutTimestamp?: Date | string;
   workHours?: string;
+  workMinutes?: number;
 }
 
 export enum LeaveType {
@@ -144,4 +147,30 @@ export interface Notification {
     timestamp: string;
     read: boolean;
     link?: string;
+}
+
+export enum TaskPriority {
+    Low = 'Low',
+    Medium = 'Medium',
+    High = 'High',
+}
+
+export enum TaskStatus {
+    ToDo = 'To Do',
+    InProgress = 'In Progress',
+    Done = 'Done',
+}
+
+export interface Task {
+    id: string;
+    title: string;
+    description: string;
+    priority: TaskPriority;
+    status: TaskStatus;
+    assignedTo: string; // Employee ID
+    assignedBy: string; // User ID
+    departmentId: string;
+    dueDate: string;
+    createdAt?: string;
+    updatedAt?: string;
 }

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Comprehensive Test - WEintegrity HRMS</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-item {
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #ddd;
+            background: #f9f9f9;
+        }
+        .test-item.pass {
+            border-left-color: #4caf50;
+            background: #f1f8f4;
+        }
+        .test-item.fail {
+            border-left-color: #f44336;
+            background: #fef1f0;
+        }
+        .test-item.pending {
+            border-left-color: #ff9800;
+            background: #fff8f0;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .status.pass { background: #4caf50; color: white; }
+        .status.fail { background: #f44336; color: white; }
+        .status.pending { background: #ff9800; color: white; }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        .summary h2 {
+            margin-top: 0;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .log-entry {
+            margin: 5px 0;
+        }
+        .log-success { color: #4ec9b0; }
+        .log-error { color: #f48771; }
+        .log-info { color: #9cdcfe; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧪 Frontend Comprehensive Test</h1>
+        <p>WEintegrity HR Management System</p>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 Test Controls</h2>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="clearResults()">Clear Results</button>
+        <button onclick="testLogin()">Test Login Only</button>
+        <button onclick="testDashboard()">Test Dashboard Only</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Console Log</h2>
+        <div id="log" class="log"></div>
+    </div>
+
+    <div id="summary" class="summary" style="display: none;">
+        <h2>📈 Test Summary</h2>
+        <div id="summary-content"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let testResults = [];
+        let authToken = '';
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function addTestResult(name, status, details = '') {
+            testResults.push({ name, status, details });
+            updateResults();
+        }
+
+        function updateResults() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = testResults.map(test => `
+                <div class="test-item ${test.status}">
+                    <span class="status ${test.status}">${test.status.toUpperCase()}</span>
+                    <strong>${test.name}</strong>
+                    ${test.details ? `<br><small>${test.details}</small>` : ''}
+                </div>
+            `).join('');
+
+            // Update summary
+            const passed = testResults.filter(t => t.status === 'pass').length;
+            const failed = testResults.filter(t => t.status === 'fail').length;
+            const total = testResults.length;
+
+            if (total > 0) {
+                const summaryDiv = document.getElementById('summary');
+                const summaryContent = document.getElementById('summary-content');
+                summaryDiv.style.display = 'block';
+                summaryContent.innerHTML = `
+                    <p><strong>Total Tests:</strong> ${total}</p>
+                    <p><strong>Passed:</strong> ${passed} ✅</p>
+                    <p><strong>Failed:</strong> ${failed} ❌</p>
+                    <p><strong>Success Rate:</strong> ${((passed/total)*100).toFixed(1)}%</p>
+                `;
+            }
+        }
+
+        function clearResults() {
+            testResults = [];
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('log').innerHTML = '';
+            document.getElementById('summary').style.display = 'none';
+            log('Results cleared', 'info');
+        }
+
+        async function testAPIHealth() {
+            log('Testing API health...', 'info');
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    addTestResult('API Health Check', 'pass', 'Backend is responding');
+                    log('✅ API health check passed', 'success');
+                    return true;
+                } else {
+                    addTestResult('API Health Check', 'fail', 'Unexpected response');
+                    log('❌ API health check failed', 'error');
+                    return false;
+                }
+            } catch (error) {
+                addTestResult('API Health Check', 'fail', error.message);
+                log(`❌ API health check error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testLogin() {
+            log('Testing login...', 'info');
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@hrms.com',
+                        password: 'password123'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.user) {
+                    addTestResult('Login', 'pass', `User: ${data.user.name}, Role: ${data.user.role}`);
+                    log(`✅ Login successful: ${data.user.name}`, 'success');
+                    
+                    // Test MFA field
+                    if (data.user.isMfaSetup !== undefined) {
+                        addTestResult('MFA Field Check', 'pass', `isMfaSetup: ${data.user.isMfaSetup}`);
+                        log('✅ MFA field present', 'success');
+                    } else {
+                        addTestResult('MFA Field Check', 'fail', 'isMfaSetup field missing');
+                        log('❌ MFA field missing', 'error');
+                    }
+
+                    // Test MFA verification
+                    return await testMFAVerification(data.user.id || data.user._id);
+                } else {
+                    addTestResult('Login', 'fail', 'No user data returned');
+                    log('❌ Login failed: No user data', 'error');
+                    return false;
+                }
+            } catch (error) {
+                addTestResult('Login', 'fail', error.message);
+                log(`❌ Login error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testMFAVerification(userId) {
+            log('Testing MFA verification...', 'info');
+            try {
+                const response = await fetch(`${API_URL}/auth/mfa/verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: userId,
+                        token: '123456',
+                        isSetup: false
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.token) {
+                    authToken = data.token;
+                    addTestResult('MFA Verification', 'pass', 'Token received');
+                    log('✅ MFA verification successful', 'success');
+                    return true;
+                } else {
+                    addTestResult('MFA Verification', 'fail', 'No token received');
+                    log('❌ MFA verification failed', 'error');
+                    return false;
+                }
+            } catch (error) {
+                addTestResult('MFA Verification', 'fail', error.message);
+                log(`❌ MFA error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testDashboard() {
+            if (!authToken) {
+                log('⚠️ No auth token, running login first...', 'info');
+                const loginSuccess = await testLogin();
+                if (!loginSuccess) return false;
+            }
+
+            log('Testing dashboard data...', 'info');
+            try {
+                const headers = {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                };
+
+                const [employees, departments, leaves, attendance] = await Promise.all([
+                    fetch(`${API_URL}/employees`, { headers }).then(r => r.json()),
+                    fetch(`${API_URL}/departments`, { headers }).then(r => r.json()),
+                    fetch(`${API_URL}/leaves`, { headers }).then(r => r.json()),
+                    fetch(`${API_URL}/attendance`, { headers }).then(r => r.json())
+                ]);
+
+                addTestResult('Dashboard - Employees', 'pass', `${employees.length} employees loaded`);
+                addTestResult('Dashboard - Departments', 'pass', `${departments.length} departments loaded`);
+                addTestResult('Dashboard - Leaves', 'pass', `${leaves.length} leave requests loaded`);
+                addTestResult('Dashboard - Attendance', 'pass', `${attendance.length} attendance records loaded`);
+
+                log(`✅ Dashboard data loaded successfully`, 'success');
+                log(`   Employees: ${employees.length}`, 'info');
+                log(`   Departments: ${departments.length}`, 'info');
+                log(`   Leaves: ${leaves.length}`, 'info');
+                log(`   Attendance: ${attendance.length}`, 'info');
+
+                return true;
+            } catch (error) {
+                addTestResult('Dashboard Data', 'fail', error.message);
+                log(`❌ Dashboard error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testFrontendAccess() {
+            log('Testing frontend accessibility...', 'info');
+            try {
+                const response = await fetch('http://localhost:3000');
+                if (response.ok) {
+                    addTestResult('Frontend Access', 'pass', 'Frontend is accessible');
+                    log('✅ Frontend accessible at http://localhost:3000', 'success');
+                    return true;
+                } else {
+                    addTestResult('Frontend Access', 'fail', `Status: ${response.status}`);
+                    log(`❌ Frontend returned status: ${response.status}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                addTestResult('Frontend Access', 'fail', error.message);
+                log(`❌ Frontend access error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function runAllTests() {
+            clearResults();
+            log('🚀 Starting comprehensive frontend tests...', 'info');
+            log('='.repeat(50), 'info');
+
+            await testAPIHealth();
+            await testFrontendAccess();
+            await testLogin();
+            await testDashboard();
+
+            log('='.repeat(50), 'info');
+            log('✅ All tests completed!', 'success');
+        }
+
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            log('Frontend test page loaded', 'info');
+            log('Click "Run All Tests" to begin testing', 'info');
+        });
+    </script>
+</body>
+</html>

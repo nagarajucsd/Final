@@ -15,6 +15,7 @@ import notificationRoutes from './routes/notifications.js';
 import exitInterviewRoutes from './routes/exitInterview.js';
 import reportsRoutes from './routes/reports.js';
 import apiInfoRoutes from './routes/api-info.js';
+import taskRoutes from './routes/tasks.js';
 
 // Load environment variables
 dotenv.config();
@@ -48,6 +49,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/exit-interviews', exitInterviewRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/info', apiInfoRoutes);
+app.use('/api/tasks', taskRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

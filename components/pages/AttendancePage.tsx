@@ -65,8 +65,8 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ user, records, setRecor
 
     loadAttendanceData();
 
-    // Auto-refresh every 10 seconds
-    const interval = setInterval(loadAttendanceData, 10000);
+    // Auto-refresh every 5 seconds for real-time updates
+    const interval = setInterval(loadAttendanceData, 5000);
     return () => clearInterval(interval);
   }, [setRecords]);
 

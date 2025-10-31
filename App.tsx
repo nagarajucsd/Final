@@ -4,7 +4,7 @@ import Sidebar from './components/layout/Sidebar';
 import Topbar from './components/layout/Topbar';
 import LoginPage from './components/LoginPage';
 // FIX: Corrected imports from the now-fixed types.ts file.
-import { User, UserRole, AttendanceRecord, AttendanceStatus, LeaveRequest, Employee, Department, PayrollRecord, LeaveBalance, LeaveStatus, LeaveType, Notification } from './types';
+import { User, UserRole, AttendanceRecord, AttendanceStatus, LeaveRequest, Employee, Department, PayrollRecord, LeaveBalance, LeaveStatus, LeaveType, Notification, Task } from './types';
 import { ToastProvider, useToast } from './hooks/useToast';
 import { mockAttendance, mockLeaveRequests, mockUserWeeklyProgress, mockEmployees, mockDepartments, mockPayroll, initialLeaveBalances, mockUsers, mockNotifications } from './data/mockData';
 
@@ -18,6 +18,7 @@ import LeaveManagementPage from './components/pages/LeaveManagementPage';
 import PayrollPage from './components/pages/PayrollPage';
 import ReportsPage from './components/pages/ReportsPage';
 import ProfilePage from './components/pages/ProfilePage';
+import TasksPage from './components/pages/TasksPage';
 import MFASetupPage from './components/mfa/MFASetupPage';
 import MFAVerificationPage from './components/mfa/MFAVerificationPage';
 import MfaRecoveryPage from './components/mfa/MfaRecoveryPage';
@@ -60,6 +61,7 @@ const AppContent: React.FC = () => {
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(mockPayroll);
   const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[]>(initialLeaveBalances);
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   const [todayAttendanceRecord, setTodayAttendanceRecord] = useState<AttendanceRecord | null>(null);
   
@@ -80,26 +82,30 @@ const AppContent: React.FC = () => {
         const { departmentService } = await import('./services/departmentService');
         const { leaveService } = await import('./services/leaveService');
         const { attendanceService } = await import('./services/attendanceService');
+        const { taskService } = await import('./services/taskService');
 
         // Load all data in parallel
-        const [employeesData, departmentsData, leavesData, attendanceData] = await Promise.all([
+        const [employeesData, departmentsData, leavesData, attendanceData, tasksData] = await Promise.all([
           employeeService.getAllEmployees().catch(() => employees),
           departmentService.getAllDepartments().catch(() => departments),
           leaveService.getAllLeaveRequests().catch(() => leaveRequests),
-          attendanceService.getAllAttendance().catch(() => attendanceRecords)
+          attendanceService.getAllAttendance().catch(() => attendanceRecords),
+          taskService.getAllTasks().catch(() => [])
         ]);
 
         console.log('✅ Data loaded:', {
           employees: employeesData.length,
           departments: departmentsData.length,
           leaves: leavesData.length,
-          attendance: attendanceData.length
+          attendance: attendanceData.length,
+          tasks: tasksData.length
         });
 
         setEmployees(employeesData);
         setDepartments(departmentsData);
         setLeaveRequests(leavesData);
         setAttendanceRecords(attendanceData);
+        setTasks(tasksData);
       } catch (error) {
         console.error('❌ Failed to load data from API:', error);
       }
@@ -108,7 +114,7 @@ const AppContent: React.FC = () => {
     loadDataFromAPI();
   }, [authState]);
 
-  // Auto-refresh data every 30 seconds when authenticated
+  // Auto-refresh data every 5 seconds when authenticated
   useEffect(() => {
     if (authState !== 'authenticated') return;
 
@@ -119,28 +125,32 @@ const AppContent: React.FC = () => {
         const { departmentService } = await import('./services/departmentService');
         const { leaveService } = await import('./services/leaveService');
         const { attendanceService } = await import('./services/attendanceService');
+        const { taskService } = await import('./services/taskService');
 
-        const [employeesData, departmentsData, leavesData, attendanceData] = await Promise.all([
+        const [employeesData, departmentsData, leavesData, attendanceData, tasksData] = await Promise.all([
           employeeService.getAllEmployees().catch(() => employees),
           departmentService.getAllDepartments().catch(() => departments),
           leaveService.getAllLeaveRequests().catch(() => leaveRequests),
-          attendanceService.getAllAttendance().catch(() => attendanceRecords)
+          attendanceService.getAllAttendance().catch(() => attendanceRecords),
+          taskService.getAllTasks().catch(() => tasks)
         ]);
 
         setEmployees(employeesData);
         setDepartments(departmentsData);
         setLeaveRequests(leavesData);
         setAttendanceRecords(attendanceData);
+        setTasks(tasksData);
         console.log('✅ Auto-refresh complete:', {
           employees: employeesData.length,
           departments: departmentsData.length,
           leaves: leavesData.length,
-          attendance: attendanceData.length
+          attendance: attendanceData.length,
+          tasks: tasksData.length
         });
       } catch (error) {
         console.error('❌ Auto-refresh failed:', error);
       }
-    }, 10000); // Refresh every 10 seconds for real-time updates
+    }, 5000); // Refresh every 5 seconds for real-time updates
 
     return () => clearInterval(refreshInterval);
   }, [authState]);
@@ -155,68 +165,83 @@ const AppContent: React.FC = () => {
     setNotifications(prev => [newNotification, ...prev]);
   }, []);
 
-  const handleApplyLeave = useCallback((newRequest: Omit<LeaveRequest, 'id' | 'status' | 'days' | 'employeeId' | 'employeeName'>) => {
+  const handleApplyLeave = useCallback(async (newRequest: Omit<LeaveRequest, 'id' | 'status' | 'days' | 'employeeId' | 'employeeName'>) => {
     if (!currentUser) return;
 
-    const startDate = new Date(newRequest.startDate);
-    const endDate = new Date(newRequest.endDate);
-    const timeDiff = endDate.getTime() - startDate.getTime();
-    const dayDiff = timeDiff / (1000 * 3600 * 24) + 1;
+    try {
+      const startDate = new Date(newRequest.startDate);
+      const endDate = new Date(newRequest.endDate);
+      const timeDiff = endDate.getTime() - startDate.getTime();
+      const dayDiff = timeDiff / (1000 * 3600 * 24) + 1;
 
-    const fullRequest: LeaveRequest = {
-      ...newRequest,
-      id: `lr${Date.now()}`,
-      status: LeaveStatus.Pending,
-      days: dayDiff,
-      employeeId: currentUser.id,
-      employeeName: currentUser.name,
-    };
-    
-    setLeaveRequests(prev => [fullRequest, ...prev]);
+      // Create leave request via API
+      const { leaveService } = await import('./services/leaveService');
+      const createdRequest = await leaveService.createLeaveRequest({
+        ...newRequest,
+        employeeId: currentUser.id,
+        employeeName: currentUser.name,
+        days: dayDiff,
+      });
 
-    setLeaveBalances(prev => prev.map(empBalance => {
-        if (empBalance.employeeId === currentUser.id) {
-            const newBalances = empBalance.balances.map(balance => {
-                if (balance.type === newRequest.leaveType) {
-                    return { ...balance, pending: balance.pending + dayDiff };
-                }
-                return balance;
-            });
-            return { ...empBalance, balances: newBalances };
-        }
-        return empBalance;
-    }));
+      // Update local state
+      setLeaveRequests(prev => [createdRequest, ...prev]);
 
-    addToast({ type: 'success', message: 'Leave request submitted successfully!' });
-    addNotification({ title: 'New Leave Request', message: `${currentUser.name} requested ${dayDiff} day(s) of ${newRequest.leaveType} leave.`, link: 'Leave Requests' });
+      setLeaveBalances(prev => prev.map(empBalance => {
+          if (empBalance.employeeId === currentUser.id) {
+              const newBalances = empBalance.balances.map(balance => {
+                  if (balance.type === newRequest.leaveType) {
+                      return { ...balance, pending: balance.pending + dayDiff };
+                  }
+                  return balance;
+              });
+              return { ...empBalance, balances: newBalances };
+          }
+          return empBalance;
+      }));
 
+      addToast({ type: 'success', message: 'Leave request submitted successfully!' });
+      addNotification({ title: 'New Leave Request', message: `${currentUser.name} requested ${dayDiff} day(s) of ${newRequest.leaveType} leave.`, link: 'Leave Requests' });
+    } catch (error: any) {
+      console.error('❌ Failed to submit leave request:', error);
+      addToast({ type: 'error', message: error.response?.data?.message || 'Failed to submit leave request' });
+    }
   }, [currentUser, addToast, addNotification]);
 
-  const handleLeaveAction = useCallback((requestId: string, newStatus: LeaveStatus.Approved | LeaveStatus.Rejected, employeeId: string, leaveType: LeaveType, days: number) => {
-    setLeaveRequests(prev => prev.map(req => req.id === requestId ? { ...req, status: newStatus } : req));
+  const handleLeaveAction = useCallback(async (requestId: string, newStatus: LeaveStatus.Approved | LeaveStatus.Rejected, employeeId: string, leaveType: LeaveType, days: number) => {
+    try {
+      // Update leave request status via API
+      const { leaveService } = await import('./services/leaveService');
+      const updatedRequest = await leaveService.updateLeaveRequestStatus(requestId, newStatus);
 
-    setLeaveBalances(prev => prev.map(empBalance => {
-        if (empBalance.employeeId === employeeId) {
-            const newBalances = empBalance.balances.map(balance => {
-                if (balance.type === leaveType) {
-                    const updatedBalance = { ...balance, pending: balance.pending - days };
-                    if (newStatus === LeaveStatus.Approved) {
-                        updatedBalance.used += days;
-                    }
-                    return updatedBalance;
-                }
-                return balance;
-            });
-            return { ...empBalance, balances: newBalances };
-        }
-        return empBalance;
-    }));
-    
-    const employee = employees.find(e => e.id === employeeId);
-    if (employee) {
-        addNotification({ title: 'Leave Request Update', message: `Leave request for ${employee.name} has been ${newStatus}.`, link: 'My Leaves' });
+      // Update local state
+      setLeaveRequests(prev => prev.map(req => req.id === requestId ? updatedRequest : req));
+
+      setLeaveBalances(prev => prev.map(empBalance => {
+          if (empBalance.employeeId === employeeId) {
+              const newBalances = empBalance.balances.map(balance => {
+                  if (balance.type === leaveType) {
+                      const updatedBalance = { ...balance, pending: balance.pending - days };
+                      if (newStatus === LeaveStatus.Approved) {
+                          updatedBalance.used += days;
+                      }
+                      return updatedBalance;
+                  }
+                  return balance;
+              });
+              return { ...empBalance, balances: newBalances };
+          }
+          return empBalance;
+      }));
+      
+      const employee = employees.find(e => e.id === employeeId);
+      if (employee) {
+          addNotification({ title: 'Leave Request Update', message: `Leave request for ${employee.name} has been ${newStatus}.`, link: 'My Leaves' });
+      }
+      addToast({ type: 'success', message: `Leave request has been ${newStatus.toLowerCase()}.` });
+    } catch (error: any) {
+      console.error('❌ Failed to update leave request:', error);
+      addToast({ type: 'error', message: error.response?.data?.message || 'Failed to update leave request' });
     }
-    addToast({ type: 'success', message: `Leave request has been ${newStatus.toLowerCase()}.` });
   }, [addToast, addNotification, employees]);
 
   const handleLogin = useCallback((user: User) => {
@@ -246,51 +271,39 @@ const AppContent: React.FC = () => {
     setAuthState('authenticated');
     setActivePage('Dashboard');
 
-    // --- Initialize Weekly Timer ---
-    const today = new Date();
-    const currentWeekId = getWeekIdentifier(today);
-    const userProgress = mockUserWeeklyProgress[userToAuthenticate.id];
+    // --- Initialize Weekly Timer (Load from backend) ---
+    const loadWeeklyProgress = async () => {
+      try {
+        const { attendanceService } = await import('./services/attendanceService');
+        const weeklyData = await attendanceService.getWeeklyHours(userToAuthenticate.id);
+        
+        // Convert minutes to milliseconds
+        const accumulatedMs = weeklyData.totalMinutes * 60 * 1000;
+        setWeeklyAccumulatedMs(accumulatedMs);
 
-    let accumulatedMs = 0;
-    // Load this week's progress if it exists, otherwise start fresh.
-    if (userProgress && userProgress.weekIdentifier === currentWeekId) {
-      accumulatedMs = userProgress.accumulatedMs;
-    } else {
-      // It's a new week, so reset the progress.
-      mockUserWeeklyProgress[userToAuthenticate.id] = { accumulatedMs: 0, weekIdentifier: currentWeekId };
-    }
-    setWeeklyAccumulatedMs(accumulatedMs);
-
-    // Check if the user has already completed their 40 hours for the week.
-    if (accumulatedMs >= FORTY_HOURS_MS) {
-      setIsWeeklyTimerActive(false);
-    } else {
-      setIsWeeklyTimerActive(true);
-    }
-
-    // --- Auto Clock-In Logic ---
-    const todayStr = today.toISOString().split('T')[0];
-    let userRecordForToday = attendanceRecords.find(rec => rec.employeeId === userToAuthenticate.id && rec.date === todayStr);
-
-    // If the user hasn't clocked in today, automatically clock them in.
-    if (!userRecordForToday || !userRecordForToday.clockIn) {
-      const clockInTimeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-      if (userRecordForToday) { // Record exists but no clock-in (e.g., marked absent manually)
-        const updatedRecord = { ...userRecordForToday, status: AttendanceStatus.Present, clockIn: clockInTimeStr };
-        setAttendanceRecords(prev => prev.map(r => r.id === updatedRecord.id ? updatedRecord : r));
-        setTodayAttendanceRecord(updatedRecord);
-      } else { // No record for today, create a new one.
-        const newRecord: AttendanceRecord = {
-          id: `att-${Date.now()}`, employeeId: userToAuthenticate.id, date: todayStr,
-          status: AttendanceStatus.Present, clockIn: clockInTimeStr,
-        };
-        setAttendanceRecords(prev => [...prev, newRecord]);
-        setTodayAttendanceRecord(newRecord);
+        // Check if the user has already completed their 40 hours for the week
+        if (accumulatedMs >= FORTY_HOURS_MS) {
+          setIsWeeklyTimerActive(false);
+        } else {
+          setIsWeeklyTimerActive(true);
+        }
+      } catch (error) {
+        console.error('Failed to load weekly progress:', error);
+        setWeeklyAccumulatedMs(0);
+        setIsWeeklyTimerActive(true);
       }
-    } else {
-      // If already clocked in, just set the record for the dashboard.
+    };
+
+    loadWeeklyProgress();
+
+    // --- Check Today's Attendance (No Auto Clock-In) ---
+    const todayStr = new Date().toISOString().split('T')[0];
+    const userRecordForToday = attendanceRecords.find(rec => rec.employeeId === userToAuthenticate.id && rec.date === todayStr);
+    
+    if (userRecordForToday) {
       setTodayAttendanceRecord(userRecordForToday);
+    } else {
+      setTodayAttendanceRecord(null);
     }
   }, [currentUser, attendanceRecords, setUsers]);
 
@@ -301,44 +314,107 @@ const AppContent: React.FC = () => {
     setAuthState('loggedOut');
   }, []);
 
-  const handleClockOut = useCallback(() => {
+  const handleClockIn = useCallback(async () => {
+    if (!currentUser) return;
+
+    try {
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      const clockInTimeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+      // Call backend API to create attendance with timestamp
+      const api = (await import('./services/api')).default;
+      const response = await api.post('/attendance', {
+        employeeId: currentUser.id,
+        date: todayStr,
+        status: 'Present',
+        clockIn: clockInTimeStr
+      });
+
+      const newRecord = response.data;
+      
+      // Normalize the response
+      if (newRecord._id && !newRecord.id) {
+        newRecord.id = newRecord._id.toString();
+      }
+      if (newRecord.employeeId && typeof newRecord.employeeId === 'object') {
+        newRecord.employeeId = newRecord.employeeId._id || newRecord.employeeId.id || currentUser.id;
+      }
+
+      setTodayAttendanceRecord(newRecord);
+      setAttendanceRecords(prev => [...prev, newRecord]);
+      
+      addToast({ type: 'success', message: 'Clocked in successfully!' });
+    } catch (error: any) {
+      console.error('❌ Clock in error:', error);
+      if (error.response?.status === 400 && error.response?.data?.message?.includes('already exists')) {
+        addToast({ type: 'error', message: 'You have already clocked in today' });
+      } else {
+        addToast({ type: 'error', message: 'Failed to clock in. Please try again.' });
+      }
+    }
+  }, [currentUser, addToast]);
+
+  const handleClockOut = useCallback(async () => {
     if (currentUser && todayAttendanceRecord && todayAttendanceRecord.clockIn && !todayAttendanceRecord.clockOut) {
-        const now = new Date();
-        const clockOutTimeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        try {
+            const now = new Date();
+            const clockOutTimeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-        const [time, modifier] = todayAttendanceRecord.clockIn.split(' ');
-        let [hours, minutes] = time.split(':').map(Number);
-        if (modifier === 'PM' && hours < 12) hours += 12;
-        if (modifier === 'AM' && hours === 12) hours = 0;
-        
-        const [year, month, day] = todayAttendanceRecord.date.split('-').map(Number);
-        const clockInDate = new Date(year, month - 1, day, hours, minutes);
-        
-        const sessionDurationMs = now.getTime() - clockInDate.getTime();
-        
-        const newAccumulatedMs = isWeeklyTimerActive ? weeklyAccumulatedMs + sessionDurationMs : weeklyAccumulatedMs;
-        const sessionWorkHoursStr = formatMillisecondsToHHMMSS(sessionDurationMs);
-        
-        const updatedRecord = {
-            ...todayAttendanceRecord,
-            clockOut: clockOutTimeStr,
-            workHours: sessionWorkHoursStr,
-        };
+            // Calculate work duration from timestamp if available, otherwise from clock-in string
+            let sessionDurationMs = 0;
+            if (todayAttendanceRecord.clockInTimestamp) {
+                const clockInTime = new Date(todayAttendanceRecord.clockInTimestamp).getTime();
+                sessionDurationMs = now.getTime() - clockInTime;
+            } else {
+                // Fallback to parsing clock-in string
+                const [time, modifier] = todayAttendanceRecord.clockIn.split(' ');
+                let [hours, minutes] = time.split(':').map(Number);
+                if (modifier === 'PM' && hours < 12) hours += 12;
+                if (modifier === 'AM' && hours === 12) hours = 0;
+                
+                const [year, month, day] = todayAttendanceRecord.date.split('-').map(Number);
+                const clockInDate = new Date(year, month - 1, day, hours, minutes);
+                sessionDurationMs = now.getTime() - clockInDate.getTime();
+            }
+            
+            const workMinutes = Math.floor(sessionDurationMs / 60000);
+            const sessionWorkHoursStr = formatMillisecondsToHHMMSS(sessionDurationMs);
+            
+            // Call backend API to clock out
+            const api = (await import('./services/api')).default;
+            await api.post('/attendance/clock-out', {
+                employeeId: currentUser.id,
+                clockOut: clockOutTimeStr,
+                workHours: sessionWorkHoursStr,
+                workMinutes
+            });
 
-        setTodayAttendanceRecord(updatedRecord);
-        setAttendanceRecords(prev => prev.map(r => r.id === updatedRecord.id ? updatedRecord : r));
-        setWeeklyAccumulatedMs(newAccumulatedMs);
+            // Reload weekly hours from backend
+            const { attendanceService } = await import('./services/attendanceService');
+            const weeklyData = await attendanceService.getWeeklyHours(currentUser.id);
+            const newAccumulatedMs = weeklyData.totalMinutes * 60 * 1000;
+            
+            const updatedRecord = {
+                ...todayAttendanceRecord,
+                clockOut: clockOutTimeStr,
+                workHours: sessionWorkHoursStr,
+                workMinutes
+            };
 
-        mockUserWeeklyProgress[currentUser.id] = {
-            accumulatedMs: newAccumulatedMs,
-            weekIdentifier: getWeekIdentifier(now)
-        };
+            setTodayAttendanceRecord(updatedRecord);
+            setAttendanceRecords(prev => prev.map(r => r.id === updatedRecord.id ? updatedRecord : r));
+            setWeeklyAccumulatedMs(newAccumulatedMs);
 
-        if (newAccumulatedMs >= FORTY_HOURS_MS) {
-            setIsWeeklyTimerActive(false);
-            addToast({ type: 'success', message: 'You have completed 40 hours for the week!' });
+            if (newAccumulatedMs >= FORTY_HOURS_MS) {
+                setIsWeeklyTimerActive(false);
+                addToast({ type: 'success', message: 'You have completed 40 hours for the week!' });
+            }
+            addToast({ type: 'success', message: 'You have successfully clocked out.' });
+        } catch (error) {
+            console.error('❌ Clock out error:', error);
+            addToast({ type: 'error', message: 'Failed to clock out. Please try again.' });
         }
-        addToast({ type: 'success', message: 'You have successfully clocked out.' });
     }
   }, [currentUser, todayAttendanceRecord, addToast, weeklyAccumulatedMs, isWeeklyTimerActive]);
   
@@ -367,7 +443,7 @@ const AppContent: React.FC = () => {
 
     switch (activePage) {
       case 'Dashboard':
-        return <DashboardPage user={currentUser} employees={employees} departments={departments} attendanceRecords={attendanceRecords} leaveRequests={leaveRequests} todayAttendanceRecord={todayAttendanceRecord} onClockOut={handleClockOut} weeklyAccumulatedMs={weeklyAccumulatedMs} isWeeklyTimerActive={isWeeklyTimerActive} leaveBalances={userLeaveBalance} />;
+        return <DashboardPage user={currentUser} employees={employees} departments={departments} attendanceRecords={attendanceRecords} leaveRequests={leaveRequests} todayAttendanceRecord={todayAttendanceRecord} onClockIn={handleClockIn} onClockOut={handleClockOut} weeklyAccumulatedMs={weeklyAccumulatedMs} isWeeklyTimerActive={isWeeklyTimerActive} leaveBalances={userLeaveBalance} />;
       case 'Employees':
         return <EmployeesPage employees={employees} setEmployees={setEmployees} departments={departments} setLeaveBalances={setLeaveBalances} onAddNewUser={handleAddNewUser} />;
       case 'Departments':
@@ -382,10 +458,12 @@ const AppContent: React.FC = () => {
         return <PayrollPage user={currentUser} payrollRecords={payrollRecords} setPayrollRecords={setPayrollRecords} employees={employees} departments={departments} attendanceRecords={attendanceRecords} />;
       case 'Reports':
         return <ReportsPage employees={employees} departments={departments} attendanceRecords={attendanceRecords} leaveRequests={leaveRequests} payrollRecords={payrollRecords} />;
+      case 'Tasks':
+        return <TasksPage user={currentUser} tasks={tasks} setTasks={setTasks} employees={employees} departments={departments} />;
       case 'Profile':
         return <ProfilePage user={currentUser} onUpdateUser={(updatedUser) => setCurrentUser(u => ({...u, ...updatedUser} as User))} />;
       default:
-        return <DashboardPage user={currentUser} employees={employees} departments={departments} attendanceRecords={attendanceRecords} leaveRequests={leaveRequests} todayAttendanceRecord={todayAttendanceRecord} onClockOut={handleClockOut} weeklyAccumulatedMs={weeklyAccumulatedMs} isWeeklyTimerActive={isWeeklyTimerActive} leaveBalances={userLeaveBalance} />;
+        return <DashboardPage user={currentUser} employees={employees} departments={departments} attendanceRecords={attendanceRecords} leaveRequests={leaveRequests} todayAttendanceRecord={todayAttendanceRecord} onClockIn={handleClockIn} onClockOut={handleClockOut} weeklyAccumulatedMs={weeklyAccumulatedMs} isWeeklyTimerActive={isWeeklyTimerActive} leaveBalances={userLeaveBalance} />;
     }
   };
 

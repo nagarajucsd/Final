@@ -6,6 +6,7 @@ import Card from '../common/Card';
 interface WelcomeCardProps {
     user: User;
     todayAttendanceRecord: AttendanceRecord | null;
+    onClockIn: () => void;
     onClockOut: () => void;
     weeklyAccumulatedMs: number;
     isWeeklyTimerActive: boolean;
@@ -43,13 +44,19 @@ const WelcomeCard: React.FC<WelcomeCardProps> = (props) => {
                 </div>
             </div>
             <div className="mt-8">
-                 {isClockedIn || props.todayAttendanceRecord?.clockOut ? (
+                 {props.todayAttendanceRecord ? (
                     <div className="bg-black/20 rounded-xl">
-                        <LiveWorkTimer {...props} record={props.todayAttendanceRecord!} />
+                        <LiveWorkTimer {...props} record={props.todayAttendanceRecord} />
                     </div>
                  ) : (
-                    <div className="bg-black/20 rounded-xl p-6 text-center text-lg">
-                        It seems to be a non-working day. Enjoy your time off!
+                    <div className="bg-black/20 rounded-xl p-6 text-center">
+                        <p className="text-lg mb-4">Ready to start your workday?</p>
+                        <button
+                            onClick={props.onClockIn}
+                            className="px-8 py-3 bg-white text-primary font-semibold rounded-lg hover:bg-gray-100 transition-colors shadow-lg"
+                        >
+                            🕐 Clock In
+                        </button>
                     </div>
                  )}
             </div>

@@ -1,183 +1,300 @@
-  # WEintegrity HR Management System - Deployment Guide
+# 🚀 Deployment Guide - WEintegrity HRMS
 
-## 🚀 Production Deployment Guide
+Complete guide for deploying the WEintegrity HR Management System to production.
 
-This guide covers deploying the WEintegrity HR Management System to production environments.
+---
 
-## Table of Contents
+## 📋 Table of Contents
 
 1. [Pre-Deployment Checklist](#pre-deployment-checklist)
-2. [Database Setup](#database-setup)
-3. [Backend Deployment](#backend-deployment)
-4. [Frontend Deployment](#frontend-deployment)
-5. [Email Service Configuration](#email-service-configuration)
-6. [Security Configuration](#security-configuration)
-7. [Monitoring & Logging](#monitoring--logging)
-8. [Backup Strategy](#backup-strategy)
-9. [Scaling Considerations](#scaling-considerations)
+2. [Environment Setup](#environment-setup)
+3. [Database Setup](#database-setup)
+4. [Backend Deployment](#backend-deployment)
+5. [Frontend Deployment](#frontend-deployment)
+6. [Domain & SSL Configuration](#domain--ssl-configuration)
+7. [Post-Deployment](#post-deployment)
+8. [Deployment Platforms](#deployment-platforms)
+9. [Troubleshooting](#troubleshooting)
 
-## Pre-Deployment Checklist
+---
 
-### ✅ Environment Preparation
+## 🔍 Pre-Deployment Checklist
 
-- [ ] Production domain purchased and configured
-- [ ] SSL/TLS certificates obtained
-- [ ] Cloud hosting accounts set up
-- [ ] Email service provider configured (SendGrid, AWS SES, etc.)
-- [ ] MongoDB production instance ready
-- [ ] Environment variables documented and secured
-- [ ] CI/CD pipeline configured
-- [ ] Monitoring tools set up
+### Code Preparation
+- [ ] All tests passing (run `node test-complete-system-comprehensive.js`)
+- [ ] No TypeScript errors
+- [ ] Environment variables configured
+- [ ] Security review completed
+- [ ] Database backup created
+- [ ] Documentation updated
 
-### ✅ Code Preparation
+### Required Accounts
+- [ ] Cloud hosting account (AWS, Azure, Heroku, DigitalOcean, etc.)
+- [ ] MongoDB Atlas account (or other cloud MongoDB)
+- [ ] Domain registrar account (optional)
+- [ ] SSL certificate provider (Let's Encrypt recommended)
 
-- [ ] All tests passing
-- [ ] Production environment variables set
-- [ ] Build process tested
-- [ ] Dependencies audited for security vulnerabilities
-- [ ] Error handling reviewed
-- [ ] Logging configured appropriately
-- [ ] Rate limiting implemented
+---
 
-## Database Setup
+## 🔧 Environment Setup
 
-### MongoDB Atlas (Recommended)
+### Backend Environment Variables
 
-1. **Create MongoDB Atlas Account**
-   - Go to https://www.mongodb.com/cloud/atlas
-   - Sign up for free tier or paid tier based on needs
+Create `server/.env.production`:
+
+```env
+# Server Configuration
+NODE_ENV=production
+PORT=5000
+
+# Frontend URL (Update with your production domain)
+FRONTEND_URL=https://your-domain.com
+
+# Database (MongoDB Atlas or other cloud MongoDB)
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/hr_management_system?retryWrites=true&w=majority
+
+# JWT Configuration
+JWT_SECRET=your_super_secure_random_string_here_min_32_chars
+JWT_EXPIRE=7d
+
+# Email Configuration (SMTP)
+ENABLE_REAL_EMAIL=true
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-specific-password
+EMAIL_FROM=noreply@your-domain.com
+
+# Security
+BCRYPT_ROUNDS=12
+MAX_LOGIN_ATTEMPTS=5
+LOCKOUT_DURATION=30
+
+# CORS
+CORS_ORIGIN=https://your-domain.com
+```
+
+### Frontend Environment Variables
+
+Create `.env.production`:
+
+```env
+# API URL (Update with your backend URL)
+VITE_API_URL=https://api.your-domain.com/api
+```
+
+---
+
+## 💾 Database Setup
+
+### Option 1: MongoDB Atlas (Recommended)
+
+1. **Create Account**
+   - Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+   - Sign up for free tier (512MB storage)
 
 2. **Create Cluster**
    ```
-   - Select cloud provider (AWS, GCP, or Azure)
-   - Choose region closest to your application server
-   - Select cluster tier (M10+ recommended for production)
-   - Enable automated backups
+   - Click "Build a Database"
+   - Choose "Shared" (Free tier)
+   - Select region closest to your users
+   - Click "Create Cluster"
    ```
 
-3. **Configure Network Access**
+3. **Configure Database Access**
    ```
-   - Add IP addresses that need access
-   - For production, use specific IPs, not 0.0.0.0/0
-   - Configure VPC peering for enhanced security
+   - Go to "Database Access"
+   - Click "Add New Database User"
+   - Username: hrms_admin
+   - Password: Generate secure password
+   - Database User Privileges: "Read and write to any database"
+   - Click "Add User"
    ```
 
-4. **Create Database User**
+4. **Configure Network Access**
    ```
-   - Username: hrms_prod_user
-   - Password: Use strong, randomly generated password
-   - Roles: Read and write to specific database
+   - Go to "Network Access"
+   - Click "Add IP Address"
+   - For development: Add your IP
+   - For production: Add "0.0.0.0/0" (Allow from anywhere)
+     OR add specific server IPs
+   - Click "Confirm"
    ```
 
 5. **Get Connection String**
    ```
-   mongodb+srv://<username>:<password>@cluster.mongodb.net/hr_management_system?retryWrites=true&w=majority
+   - Go to "Database" → "Connect"
+   - Choose "Connect your application"
+   - Copy connection string
+   - Replace <password> with your database password
+   - Replace <dbname> with "hr_management_system"
    ```
 
-6. **Initial Data Migration**
+6. **Seed Initial Data** (Optional)
    ```bash
-   # Export from development
-   mongodump --uri="mongodb://localhost:27017/hr_management_system" --out=./dump
-   
-   # Import to production
-   mongorestore --uri="mongodb+srv://user:pass@cluster.mongodb.net" ./dump
+   # Update MONGODB_URI in server/.env
+   cd server
+   node utils/seed.js
    ```
 
-### Database Indexes
+### Option 2: Self-Hosted MongoDB
 
-Create indexes for optimal performance:
+If hosting MongoDB yourself:
 
-```javascript
-// In MongoDB Shell or Compass
-use hr_management_system;
+```bash
+# Install MongoDB
+# Ubuntu/Debian
+sudo apt-get install mongodb
 
-// User indexes
-db.users.createIndex({ email: 1 }, { unique: true });
-db.users.createIndex({ role: 1 });
+# Start MongoDB
+sudo systemctl start mongodb
+sudo systemctl enable mongodb
 
-// Employee indexes
-db.employees.createIndex({ employeeId: 1 }, { unique: true });
-db.employees.createIndex({ userId: 1 });
-db.employees.createIndex({ departmentId: 1 });
-db.employees.createIndex({ status: 1 });
-
-// Leave Request indexes
-db.leaverequests.createIndex({ employeeId: 1 });
-db.leaverequests.createIndex({ status: 1 });
-db.leaverequests.createIndex({ startDate: 1 });
-
-// Payroll indexes
-db.payrolls.createIndex({ employeeId: 1, month: 1, year: 1 }, { unique: true });
-db.payrolls.createIndex({ status: 1 });
-
-// Attendance indexes
-db.attendances.createIndex({ employeeId: 1, date: 1 });
-db.attendances.createIndex({ date: 1 });
+# Create database and user
+mongo
+use hr_management_system
+db.createUser({
+  user: "hrms_admin",
+  pwd: "secure_password",
+  roles: ["readWrite"]
+})
 ```
 
-## Backend Deployment
+---
 
-### Option 1: AWS EC2
+## 🖥️ Backend Deployment
+
+### Option A: Heroku
+
+1. **Install Heroku CLI**
+   ```bash
+   # Download from https://devcenter.heroku.com/articles/heroku-cli
+   ```
+
+2. **Login to Heroku**
+   ```bash
+   heroku login
+   ```
+
+3. **Create Heroku App**
+   ```bash
+   cd server
+   heroku create your-hrms-api
+   ```
+
+4. **Set Environment Variables**
+   ```bash
+   heroku config:set NODE_ENV=production
+   heroku config:set MONGODB_URI="your_mongodb_atlas_connection_string"
+   heroku config:set JWT_SECRET="your_secure_jwt_secret"
+   heroku config:set FRONTEND_URL="https://your-frontend-domain.com"
+   heroku config:set ENABLE_REAL_EMAIL=true
+   heroku config:set SMTP_HOST=smtp.gmail.com
+   heroku config:set SMTP_PORT=587
+   heroku config:set SMTP_USER=your-email@gmail.com
+   heroku config:set SMTP_PASS=your-app-password
+   ```
+
+5. **Deploy**
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial deployment"
+   heroku git:remote -a your-hrms-api
+   git push heroku main
+   ```
+
+6. **Verify Deployment**
+   ```bash
+   heroku logs --tail
+   heroku open
+   ```
+
+### Option B: DigitalOcean App Platform
+
+1. **Create Account** at [DigitalOcean](https://www.digitalocean.com/)
+
+2. **Create App**
+   - Go to "Apps" → "Create App"
+   - Connect your GitHub repository
+   - Select branch: `main`
+   - Autodeploy: Enable
+
+3. **Configure Build Settings**
+   ```
+   Build Command: npm install
+   Run Command: npm start
+   HTTP Port: 5000
+   ```
+
+4. **Add Environment Variables**
+   - Go to "Settings" → "App-Level Environment Variables"
+   - Add all variables from `.env.production`
+
+5. **Deploy**
+   - Click "Deploy"
+   - Wait for build to complete
+
+### Option C: AWS EC2
 
 1. **Launch EC2 Instance**
-   ```bash
-   # Choose Ubuntu Server 22.04 LTS
-   # Instance type: t3.small or larger
-   # Configure security group:
-   - Port 22 (SSH) - Your IP only
-   - Port 5000 (API) - Load balancer only
-   - Port 443 (HTTPS) - 0.0.0.0/0
+   ```
+   - AMI: Ubuntu Server 22.04 LTS
+   - Instance Type: t2.micro (free tier)
+   - Security Group: Allow ports 22, 80, 443, 5000
    ```
 
-2. **Install Dependencies**
+2. **Connect to Instance**
    ```bash
-   # Connect to instance
-   ssh -i your-key.pem ubuntu@your-instance-ip
-   
+   ssh -i your-key.pem ubuntu@your-ec2-ip
+   ```
+
+3. **Install Dependencies**
+   ```bash
    # Update system
    sudo apt update && sudo apt upgrade -y
-   
-   # Install Node.js 18
+
+   # Install Node.js
    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-   sudo apt install -y nodejs
-   
-   # Install PM2 for process management
+   sudo apt-get install -y nodejs
+
+   # Install PM2 (Process Manager)
    sudo npm install -g pm2
-   
-   # Install nginx for reverse proxy
-   sudo apt install -y nginx
+
+   # Install Nginx (Reverse Proxy)
+   sudo apt install nginx -y
    ```
 
-3. **Deploy Application**
+4. **Deploy Application**
    ```bash
    # Clone repository
-   git clone https://github.com/yourorg/hr-management-system.git
-   cd hr-management-system/server
-   
+   git clone your-repo-url
+   cd HR_app-main/server
+
    # Install dependencies
    npm install --production
-   
+
    # Create .env file
    nano .env
-   # Add production environment variables
-   
+   # Paste production environment variables
+
    # Start with PM2
-   pm2 start server.js --name hr-api
+   pm2 start server.js --name hrms-api
    pm2 save
    pm2 startup
    ```
 
-4. **Configure Nginx**
+5. **Configure Nginx**
    ```bash
-   sudo nano /etc/nginx/sites-available/hr-api
+   sudo nano /etc/nginx/sites-available/hrms-api
    ```
-   
+
    Add configuration:
    ```nginx
    server {
        listen 80;
-       server_name api.yourdomain.com;
-       
+       server_name api.your-domain.com;
+
        location / {
            proxy_pass http://localhost:5000;
            proxy_http_version 1.1;
@@ -191,515 +308,404 @@ db.attendances.createIndex({ date: 1 });
        }
    }
    ```
-   
+
    Enable site:
    ```bash
-   sudo ln -s /etc/nginx/sites-available/hr-api /etc/nginx/sites-enabled/
+   sudo ln -s /etc/nginx/sites-available/hrms-api /etc/nginx/sites-enabled/
    sudo nginx -t
    sudo systemctl restart nginx
    ```
 
-5. **Setup SSL with Let's Encrypt**
-   ```bash
-   sudo apt install certbot python3-certbot-nginx
-   sudo certbot --nginx -d api.yourdomain.com
-   ```
+---
 
-### Option 2: Heroku
+## 🌐 Frontend Deployment
 
-1. **Install Heroku CLI**
-   ```bash
-   npm install -g heroku
-   heroku login
-   ```
-
-2. **Create Heroku App**
-   ```bash
-   cd server
-   heroku create your-hr-api
-   ```
-
-3. **Set Environment Variables**
-   ```bash
-   heroku config:set NODE_ENV=production
-   heroku config:set MONGODB_URI=your-mongodb-uri
-   heroku config:set JWT_SECRET=your-secret
-   heroku config:set SMTP_HOST=smtp.sendgrid.net
-   # ... set all other variables
-   ```
-
-4. **Deploy**
-   ```bash
-   git push heroku main
-   heroku logs --tail
-   ```
-
-### Option 3: Docker Deployment
-
-1. **Create Dockerfile**
-   ```dockerfile
-   FROM node:18-alpine
-   
-   WORKDIR /app
-   
-   COPY package*.json ./
-   RUN npm ci --only=production
-   
-   COPY . .
-   
-   EXPOSE 5000
-   
-   CMD ["node", "server.js"]
-   ```
-
-2. **Create docker-compose.yml**
-   ```yaml
-   version: '3.8'
-   services:
-     api:
-       build: ./server
-       ports:
-         - "5000:5000"
-       environment:
-         - NODE_ENV=production
-         - MONGODB_URI=${MONGODB_URI}
-         - JWT_SECRET=${JWT_SECRET}
-       restart: unless-stopped
-   ```
-
-3. **Deploy**
-   ```bash
-   docker-compose up -d
-   ```
-
-## Frontend Deployment
-
-### Option 1: Vercel (Recommended)
+### Option A: Vercel (Recommended)
 
 1. **Install Vercel CLI**
    ```bash
    npm install -g vercel
    ```
 
-2. **Configure vercel.json**
+2. **Login**
+   ```bash
+   vercel login
+   ```
+
+3. **Configure Project**
+   Create `vercel.json` in project root:
    ```json
    {
      "buildCommand": "npm run build",
      "outputDirectory": "dist",
      "framework": "vite",
      "env": {
-       "VITE_API_URL": "@api_url"
+       "VITE_API_URL": "https://your-api-domain.com/api"
      }
    }
    ```
 
-3. **Deploy**
+4. **Deploy**
    ```bash
    vercel --prod
    ```
 
-4. **Set Environment Variables in Vercel Dashboard**
-   - `VITE_API_URL`: https://api.yourdomain.com/api
+### Option B: Netlify
 
-### Option 2: AWS S3 + CloudFront
+1. **Install Netlify CLI**
+   ```bash
+   npm install -g netlify-cli
+   ```
 
-1. **Build Application**
+2. **Login**
+   ```bash
+   netlify login
+   ```
+
+3. **Build Project**
+   ```bash
+   npm run build
+   ```
+
+4. **Deploy**
+   ```bash
+   netlify deploy --prod --dir=dist
+   ```
+
+5. **Configure Environment Variables**
+   - Go to Netlify Dashboard
+   - Site Settings → Environment Variables
+   - Add `VITE_API_URL`
+
+### Option C: AWS S3 + CloudFront
+
+1. **Build Project**
    ```bash
    npm run build
    ```
 
 2. **Create S3 Bucket**
    ```bash
-   aws s3 mb s3://your-hr-app
-   aws s3 website s3://your-hr-app --index-document index.html --error-document index.html
+   aws s3 mb s3://your-hrms-frontend
+   aws s3 website s3://your-hrms-frontend --index-document index.html
    ```
 
 3. **Upload Files**
    ```bash
-   aws s3 sync dist/ s3://your-hr-app --acl public-read
+   aws s3 sync dist/ s3://your-hrms-frontend --delete
    ```
 
-4. **Create CloudFront Distribution**
+4. **Configure CloudFront**
+   - Create CloudFront distribution
    - Origin: S3 bucket
    - Enable HTTPS
-   - Set custom domain
-   - Configure SSL certificate
+   - Set custom error page: /index.html (for SPA routing)
 
-### Option 3: Netlify
+### Option D: Same Server as Backend (Nginx)
 
-1. **Create netlify.toml**
-   ```toml
-   [build]
-     command = "npm run build"
-     publish = "dist"
-   
-   [[redirects]]
-     from = "/*"
-     to = "/index.html"
-     status = 200
-   ```
-
-2. **Deploy**
+1. **Build Frontend**
    ```bash
-   npm install -g netlify-cli
-   netlify deploy --prod
+   npm run build
    ```
 
-## Email Service Configuration
-
-### SendGrid Setup
-
-1. **Create SendGrid Account**
-   - Go to https://sendgrid.com
-   - Sign up and verify email
-
-2. **Create API Key**
-   ```
-   Settings > API Keys > Create API Key
-   Name: HR Management System
-   Permissions: Full Access (or limited to Mail Send)
-   ```
-
-3. **Configure in .env**
-   ```env
-   SMTP_HOST=smtp.sendgrid.net
-   SMTP_PORT=587
-   SMTP_USER=apikey
-   SMTP_PASS=your-sendgrid-api-key
-   SMTP_FROM=noreply@yourdomain.com
-   ```
-
-4. **Verify Domain**
-   ```
-   Settings > Sender Authentication > Verify a domain
-   Add DNS records as instructed
-   ```
-
-### AWS SES Setup
-
-1. **Request Production Access**
-   - AWS SES starts in sandbox mode
-   - Request production access in AWS Console
-
-2. **Verify Domain**
+2. **Copy to Server**
    ```bash
-   aws ses verify-domain-identity --domain yourdomain.com
+   scp -r dist/* ubuntu@your-server:/var/www/hrms
    ```
 
-3. **Configure SMTP Credentials**
-   ```
-   SES Console > SMTP Settings > Create SMTP Credentials
-   ```
-
-4. **Update .env**
-   ```env
-   SMTP_HOST=email-smtp.us-east-1.amazonaws.com
-   SMTP_PORT=587
-   SMTP_USER=your-smtp-username
-   SMTP_PASS=your-smtp-password
-   ```
-
-## Security Configuration
-
-### 1. SSL/TLS Configuration
-
-```bash
-# Force HTTPS in Nginx
-server {
-    listen 80;
-    server_name api.yourdomain.com;
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name api.yourdomain.com;
-    
-    ssl_certificate /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    
-    # ... rest of configuration
-}
-```
-
-### 2. Rate Limiting
-
-Install and configure express-rate-limit:
-
-```javascript
-// server/server.js
-import rateLimit from 'express-rate-limit';
-
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-});
-
-app.use('/api/', limiter);
-
-// Stricter limit for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  skipSuccessfulRequests: true
-});
-
-app.use('/api/auth/login', authLimiter);
-```
-
-### 3. Helmet.js for Security Headers
-
-```javascript
-import helmet from 'helmet';
-
-app.use(helmet());
-app.use(helmet.contentSecurityPolicy({
-  directives: {
-    defaultSrc: ["'self'"],
-    styleSrc: ["'self'", "'unsafe-inline'"],
-    scriptSrc: ["'self'"],
-    imgSrc: ["'self'", "data:", "https:"],
-  }
-}));
-```
-
-### 4. Environment Variables Security
-
-```bash
-# Never commit .env files
-echo ".env" >> .gitignore
-
-# Use secrets management
-# AWS Secrets Manager
-aws secretsmanager create-secret --name hr-system-secrets --secret-string file://secrets.json
-
-# Or HashiCorp Vault
-vault kv put secret/hr-system mongodb_uri=xxx jwt_secret=xxx
-```
-
-## Monitoring & Logging
-
-### 1. Application Monitoring with PM2
-
-```bash
-# Install PM2 Plus
-pm2 install pm2-logrotate
-pm2 set pm2-logrotate:max_size 10M
-pm2 set pm2-logrotate:retain 7
-
-# Monitor
-pm2 monit
-pm2 logs hr-api
-```
-
-### 2. Error Tracking with Sentry
-
-```bash
-npm install @sentry/node
-```
-
-```javascript
-// server/server.js
-import * as Sentry from '@sentry/node';
-
-Sentry.init({
-  dsn: process.env.SENTRY_DSN,
-  environment: process.env.NODE_ENV,
-  tracesSampleRate: 1.0,
-});
-
-app.use(Sentry.Handlers.requestHandler());
-app.use(Sentry.Handlers.errorHandler());
-```
-
-### 3. Database Monitoring
-
-- Enable MongoDB Atlas monitoring
-- Set up alerts for:
-  - High CPU usage (>80%)
-  - High memory usage (>80%)
-  - Slow queries (>1000ms)
-  - Connection pool exhaustion
-
-### 4. Uptime Monitoring
-
-Use services like:
-- UptimeRobot (https://uptimerobot.com)
-- Pingdom (https://www.pingdom.com)
-- StatusCake (https://www.statuscake.com)
-
-Configure alerts for:
-- API downtime
-- Response time > 2000ms
-- SSL certificate expiration
-
-## Backup Strategy
-
-### 1. Database Backups
-
-```bash
-# Daily automated backups with MongoDB Atlas
-# Configure in Atlas Dashboard:
-# - Backup frequency: Every 24 hours
-# - Retention: 30 days
-# - Point-in-time recovery: Enabled
-
-# Manual backup
-mongodump --uri="mongodb+srv://user:pass@cluster.mongodb.net/hr_management_system" --out=./backup-$(date +%Y%m%d)
-
-# Restore
-mongorestore --uri="mongodb+srv://user:pass@cluster.mongodb.net" ./backup-20251013
-```
-
-### 2. Application Code Backups
-
-```bash
-# Use Git tags for releases
-git tag -a v1.0.0 -m "Production release 1.0.0"
-git push origin v1.0.0
-
-# Store in multiple locations
-git remote add backup git@github.com:yourorg/hr-backup.git
-git push backup main
-```
-
-### 3. Backup Testing
-
-- Test restore process monthly
-- Document restore procedures
-- Maintain backup restore logs
-
-## Scaling Considerations
-
-### Horizontal Scaling
-
-1. **Load Balancer Configuration**
+3. **Configure Nginx**
    ```nginx
-   upstream hr_api {
-       least_conn;
-       server api1.internal:5000;
-       server api2.internal:5000;
-       server api3.internal:5000;
-   }
-   
    server {
+       listen 80;
+       server_name your-domain.com;
+       root /var/www/hrms;
+       index index.html;
+
        location / {
-           proxy_pass http://hr_api;
+           try_files $uri $uri/ /index.html;
+       }
+
+       location /api {
+           proxy_pass http://localhost:5000;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
+           proxy_set_header Host $host;
+           proxy_cache_bypass $http_upgrade;
        }
    }
    ```
 
-2. **Session Handling**
-   - Use JWT tokens (stateless)
-   - Store sessions in Redis if needed
+---
 
-3. **Database Scaling**
-   - MongoDB replica sets
-   - Read replicas for reporting
-   - Sharding for large datasets
+## 🔒 Domain & SSL Configuration
 
-### Vertical Scaling
+### Configure Domain
 
-- Monitor resource usage
-- Upgrade instance types as needed
-- Optimize database queries
+1. **Point Domain to Server**
+   - Add A record: `your-domain.com` → `your-server-ip`
+   - Add A record: `api.your-domain.com` → `your-server-ip`
 
-### Caching Strategy
+2. **Wait for DNS Propagation** (up to 48 hours)
 
-```javascript
-// Install Redis
-npm install redis
-
-// Cache frequently accessed data
-import Redis from 'redis';
-const redis = Redis.createClient({
-  url: process.env.REDIS_URL
-});
-
-// Cache departments
-app.get('/api/departments', async (req, res) => {
-  const cached = await redis.get('departments');
-  if (cached) {
-    return res.json(JSON.parse(cached));
-  }
-  
-  const departments = await Department.find();
-  await redis.set('departments', JSON.stringify(departments), 'EX', 3600);
-  res.json(departments);
-});
-```
-
-## Post-Deployment Tasks
-
-### ✅ Verification
-
-- [ ] Health check endpoints responding
-- [ ] Database connections working
-- [ ] Email notifications sending
-- [ ] Authentication working
-- [ ] MFA setup functional
-- [ ] All user roles accessible
-- [ ] Reports generating correctly
-- [ ] File uploads working
-- [ ] SSL certificates valid
-- [ ] DNS records propagated
-
-### ✅ Performance Testing
+### Install SSL Certificate (Let's Encrypt)
 
 ```bash
-# Load testing with Apache Bench
-ab -n 1000 -c 10 https://api.yourdomain.com/api/health
+# Install Certbot
+sudo apt install certbot python3-certbot-nginx -y
 
-# Or with Artillery
-npm install -g artillery
-artillery quick --count 100 --num 10 https://api.yourdomain.com/api/health
+# Get certificate
+sudo certbot --nginx -d your-domain.com -d api.your-domain.com
+
+# Auto-renewal
+sudo certbot renew --dry-run
 ```
-
-### ✅ Documentation
-
-- [ ] Update API documentation with production URLs
-- [ ] Document deployment process
-- [ ] Create runbooks for common issues
-- [ ] Update team on new deployment
-
-## Rollback Procedure
-
-In case of issues:
-
-```bash
-# Backend (PM2)
-pm2 stop hr-api
-git checkout v1.0.0  # previous stable version
-npm install
-pm2 restart hr-api
-
-# Database (if needed)
-mongorestore --uri="mongodb+srv://..." ./backup-previous
-
-# Frontend (Vercel)
-vercel rollback
-```
-
-## Maintenance Windows
-
-Schedule regular maintenance:
-- Security updates: Monthly
-- Dependency updates: Bi-weekly
-- Database optimization: Quarterly
-- Performance reviews: Quarterly
-
-## Support Contacts
-
-- **DevOps Lead**: devops@yourcompany.com
-- **Database Admin**: dba@yourcompany.com
-- **Security Team**: security@yourcompany.com
-- **On-Call**: oncall@yourcompany.com
 
 ---
 
-**Last Updated**: October 13, 2025
-**Version**: 1.0.0
-**Maintained by**: DevOps Team
+## ✅ Post-Deployment
+
+### 1. Verify Deployment
+
+```bash
+# Test backend health
+curl https://api.your-domain.com/api/health
+
+# Test frontend
+curl https://your-domain.com
+
+# Test login
+curl -X POST https://api.your-domain.com/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@hrms.com","password":"password123"}'
+```
+
+### 2. Create Admin Account
+
+```bash
+# SSH to server
+ssh ubuntu@your-server
+
+# Run seed script
+cd HR_app-main/server
+node utils/seed.js
+```
+
+### 3. Configure Monitoring
+
+**Option A: PM2 Monitoring**
+```bash
+pm2 install pm2-logrotate
+pm2 set pm2-logrotate:max_size 10M
+pm2 set pm2-logrotate:retain 7
+```
+
+**Option B: External Monitoring**
+- [UptimeRobot](https://uptimerobot.com/) - Free uptime monitoring
+- [Sentry](https://sentry.io/) - Error tracking
+- [LogRocket](https://logrocket.com/) - Session replay
+
+### 4. Set Up Backups
+
+**MongoDB Atlas Backups** (Automatic)
+- Go to "Backup" tab
+- Enable "Continuous Backup"
+
+**Manual Backup Script**:
+```bash
+#!/bin/bash
+# backup.sh
+DATE=$(date +%Y%m%d_%H%M%S)
+mongodump --uri="your_mongodb_uri" --out="/backups/hrms_$DATE"
+```
+
+Add to crontab:
+```bash
+crontab -e
+# Add: 0 2 * * * /path/to/backup.sh
+```
+
+### 5. Security Hardening
+
+```bash
+# Enable firewall
+sudo ufw allow 22
+sudo ufw allow 80
+sudo ufw allow 443
+sudo ufw enable
+
+# Disable root login
+sudo nano /etc/ssh/sshd_config
+# Set: PermitRootLogin no
+sudo systemctl restart sshd
+
+# Install fail2ban
+sudo apt install fail2ban -y
+sudo systemctl enable fail2ban
+```
+
+---
+
+## 🌍 Deployment Platforms Comparison
+
+| Platform | Backend | Frontend | Database | Cost | Difficulty |
+|----------|---------|----------|----------|------|------------|
+| **Heroku** | ✅ | ✅ | External | $7/mo | Easy |
+| **Vercel + Heroku** | Heroku | Vercel | External | $7/mo | Easy |
+| **Netlify + Railway** | Railway | Netlify | External | $5/mo | Easy |
+| **DigitalOcean** | ✅ | ✅ | ✅ | $6/mo | Medium |
+| **AWS** | EC2 | S3+CloudFront | Atlas | $10/mo | Hard |
+| **Azure** | App Service | Static Web Apps | Cosmos DB | $15/mo | Hard |
+| **VPS (DigitalOcean/Linode)** | ✅ | ✅ | ✅ | $5/mo | Medium |
+
+### Recommended for Beginners:
+**Vercel (Frontend) + Railway (Backend) + MongoDB Atlas (Database)**
+- Total Cost: ~$5/month
+- Easy setup
+- Auto-deployment from Git
+- Free SSL
+- Good performance
+
+---
+
+## 🐛 Troubleshooting
+
+### Issue: CORS Errors
+
+**Solution:**
+```javascript
+// server/server.js
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
+```
+
+### Issue: MongoDB Connection Failed
+
+**Solution:**
+1. Check MongoDB Atlas IP whitelist
+2. Verify connection string
+3. Check network connectivity
+4. Ensure database user has correct permissions
+
+### Issue: Environment Variables Not Loading
+
+**Solution:**
+```bash
+# Verify .env file exists
+ls -la server/.env
+
+# Check if variables are set
+echo $NODE_ENV
+
+# Restart application
+pm2 restart hrms-api
+```
+
+### Issue: Build Fails
+
+**Solution:**
+```bash
+# Clear cache
+rm -rf node_modules package-lock.json
+npm install
+
+# Check Node version
+node --version  # Should be 18+
+
+# Build with verbose logging
+npm run build --verbose
+```
+
+### Issue: SSL Certificate Not Working
+
+**Solution:**
+```bash
+# Renew certificate
+sudo certbot renew
+
+# Check certificate status
+sudo certbot certificates
+
+# Restart Nginx
+sudo systemctl restart nginx
+```
+
+---
+
+## 📝 Deployment Checklist
+
+### Pre-Deployment
+- [ ] All tests passing
+- [ ] Environment variables configured
+- [ ] Database backup created
+- [ ] SSL certificate obtained
+- [ ] Domain configured
+
+### Deployment
+- [ ] Backend deployed and running
+- [ ] Frontend deployed and accessible
+- [ ] Database connected
+- [ ] API endpoints working
+- [ ] Login functionality working
+
+### Post-Deployment
+- [ ] Admin account created
+- [ ] Monitoring configured
+- [ ] Backups scheduled
+- [ ] Security hardened
+- [ ] Documentation updated
+- [ ] Team notified
+
+---
+
+## 🎯 Quick Deployment (Recommended Stack)
+
+### 1. MongoDB Atlas (Database)
+```
+1. Create free cluster at mongodb.com/cloud/atlas
+2. Get connection string
+3. Add to environment variables
+```
+
+### 2. Railway (Backend)
+```
+1. Go to railway.app
+2. Connect GitHub repository
+3. Select server folder
+4. Add environment variables
+5. Deploy
+```
+
+### 3. Vercel (Frontend)
+```
+1. Go to vercel.com
+2. Import GitHub repository
+3. Set build command: npm run build
+4. Set output directory: dist
+5. Add VITE_API_URL environment variable
+6. Deploy
+```
+
+**Total Time:** ~30 minutes  
+**Total Cost:** $0-5/month  
+**Difficulty:** Easy
+
+---
+
+## 📞 Support
+
+For deployment issues:
+1. Check logs: `pm2 logs` or platform-specific logs
+2. Review error messages
+3. Check environment variables
+4. Verify database connection
+5. Test API endpoints manually
+
+---
+
+**Deployment Guide Version:** 1.0  
+**Last Updated:** October 31, 2025  
+**Status:** Production Ready
+

@@ -4,6 +4,7 @@ import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import User from '../models/User.js';
 import Employee from '../models/Employee.js';
+import Attendance from '../models/Attendance.js';
 import generateToken from '../utils/generateToken.js';
 import { protect } from '../middleware/auth.js';
 import { sendPasswordResetEmail, sendAccountLockedEmail, sendMfaRecoveryEmail, sendMfaVerificationCodeEmail } from '../utils/emailService.js';
@@ -78,11 +79,13 @@ router.post('/login', async (req, res) => {
     res.json({
       user: {
         id: user._id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
         avatarUrl: user.avatarUrl,
-        isMfaSetup: user.isMfaSetup
+        isMfaSetup: user.isMfaSetup || false,
+        mfaEnabled: user.isMfaSetup || false
       }
     });
   } catch (error) {
@@ -167,6 +170,48 @@ router.post('/mfa/verify', async (req, res) => {
     if (isSetup) {
       user.isMfaSetup = true;
       await user.save();
+    }
+
+    // AUTO-ATTENDANCE: Create attendance record for today if not exists
+    try {
+      // Get today's date as string (YYYY-MM-DD) in local timezone
+      const now = new Date();
+      const todayString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      // Find employee record for this user
+      const employee = await Employee.findOne({ email: user.email });
+      
+      if (employee) {
+        // Check if attendance already exists for today
+        const existingAttendance = await Attendance.findOne({
+          employeeId: employee._id,
+          date: todayString
+        });
+
+        if (!existingAttendance) {
+          // Create new attendance record with clock-in time and timestamp
+          const clockInTime = new Date().toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: true 
+          });
+
+          await Attendance.create({
+            employeeId: employee._id,
+            date: todayString,
+            status: 'Present',
+            clockIn: clockInTime,
+            clockInTimestamp: now
+          });
+
+          console.log(`✅ Auto-attendance created for ${user.name} at ${clockInTime}`);
+        } else {
+          console.log(`ℹ️ Attendance already exists for ${user.name} today`);
+        }
+      }
+    } catch (attendanceError) {
+      console.error('❌ Auto-attendance error:', attendanceError);
+      // Don't fail login if attendance creation fails
     }
 
     // Generate JWT token
