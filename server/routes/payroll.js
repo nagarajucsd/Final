@@ -69,19 +69,30 @@ router.post('/generate', protect, authorize('Admin', 'HR'), async (req, res) => 
       return res.status(400).json({ message: 'Month and year are required' });
     }
 
-    // Check if payroll already exists for this period
-    const existingPayroll = await Payroll.findOne({ month: parseInt(month), year: parseInt(year) });
-    
-    if (existingPayroll) {
-      return res.status(400).json({ message: 'Payroll already exists for this period' });
-    }
-
     // Get all active employees
     const employees = await Employee.find({ status: 'Active' });
 
+    // Filter out employees who already have payroll for this period
+    const employeesNeedingPayroll = [];
+    for (const emp of employees) {
+      const existingPayroll = await Payroll.findOne({
+        employeeId: emp._id,
+        month: parseInt(month),
+        year: parseInt(year)
+      });
+      
+      if (!existingPayroll) {
+        employeesNeedingPayroll.push(emp);
+      }
+    }
+
+    if (employeesNeedingPayroll.length === 0) {
+      return res.status(400).json({ message: 'Payroll already exists for all employees in this period' });
+    }
+
     const payrollRecords = [];
 
-    for (const emp of employees) {
+    for (const emp of employeesNeedingPayroll) {
       // Calculate payroll
       const grossPay = emp.salary / 12;
       const basic = grossPay * 0.5;
@@ -163,12 +174,21 @@ router.put('/:id/approve', protect, authorize('Admin', 'HR'), async (req, res) =
     // Send notification to employee
     const employee = await Employee.findById(payroll.employeeId._id).populate('userId');
     if (employee && employee.userId) {
+      // Get month name
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+      const monthName = monthNames[payroll.month];
+      
+      // Get approver name
+      const approverName = req.user.name || 'HR';
+      
       await Notification.create({
         userId: employee.userId._id,
-        title: 'Payroll Approved',
-        message: `Your payroll for month ${payroll.month + 1}/${payroll.year} has been approved`,
+        title: `${approverName} approved your ${monthName} ${payroll.year} Payroll`,
+        message: `${approverName} has approved your payroll for ${monthName} ${payroll.year}. Net pay: $${payroll.netPay.toFixed(2)}`,
         type: 'payroll',
-        relatedId: payroll._id
+        relatedId: payroll._id,
+        link: '/payroll'
       });
 
       // Send email notification
@@ -215,12 +235,21 @@ router.put('/:id/reject', protect, authorize('Admin', 'HR'), async (req, res) =>
     // Send notification to employee
     const employee = await Employee.findById(payroll.employeeId._id).populate('userId');
     if (employee && employee.userId) {
+      // Get month name
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+      const monthName = monthNames[payroll.month];
+      
+      // Get rejector name
+      const rejectorName = req.user.name || 'HR';
+      
       await Notification.create({
         userId: employee.userId._id,
-        title: 'Payroll Rejected',
-        message: `Your payroll for month ${payroll.month + 1}/${payroll.year} has been rejected. Reason: ${rejectionReason}`,
+        title: `${rejectorName} rejected your ${monthName} ${payroll.year} Payroll`,
+        message: `${rejectorName} has rejected your payroll for ${monthName} ${payroll.year}. Reason: ${rejectionReason || 'Not specified'}`,
         type: 'payroll',
-        relatedId: payroll._id
+        relatedId: payroll._id,
+        link: '/payroll'
       });
     }
 

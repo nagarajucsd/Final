@@ -7,6 +7,7 @@ import Select from '../common/Select';
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from '../common/Table';
 import { attendanceService } from '../../services/attendanceService';
 import { useToast } from '../../hooks/useToast';
+import { getLocalDateString } from '../../utils/dateUtils';
 
 const StatusBadge: React.FC<{ status: AttendanceStatus }> = ({ status }) => {
   const statusClasses: Record<AttendanceStatus, string> = {
@@ -37,12 +38,12 @@ const years = Array.from({length: 5}, (v, i) => currentYear - i);
 
 const AttendancePage: React.FC<AttendancePageProps> = ({ user, records, setRecords, employees, departments }) => {
   // State for Admin/HR daily view
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString());
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   
   // State for Employee monthly view
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState<number>(9); // October (0-indexed)
+  const [selectedYear, setSelectedYear] = useState<number>(2025);
   
   const [isLoading, setIsLoading] = useState(false);
   const { addToast } = useToast();
@@ -65,8 +66,8 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ user, records, setRecor
 
     loadAttendanceData();
 
-    // Auto-refresh every 5 seconds for real-time updates
-    const interval = setInterval(loadAttendanceData, 5000);
+    // Auto-refresh every 3 seconds for REAL-TIME updates
+    const interval = setInterval(loadAttendanceData, 3000);
     return () => clearInterval(interval);
   }, [setRecords]);
 
@@ -113,13 +114,47 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ user, records, setRecor
   // Memoized data for Employee monthly view
   const monthlyRecords = useMemo(() => {
     if (!isEmployeeView) return [];
-    return records
-        .filter(r => {
-            const recordDate = new Date(r.date);
-            return r.employeeId === user.id && recordDate.getMonth() === selectedMonth && recordDate.getFullYear() === selectedYear;
-        })
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [records, user.id, selectedMonth, selectedYear, isEmployeeView]);
+    
+    // Find current employee to match against attendance records
+    const currentEmployee = employees.find(emp => emp.email === user.email || emp.userId === user.id);
+    const employeeId = currentEmployee?.id || currentEmployee?._id || user.id;
+    
+    console.log('📊 Filtering attendance for employee:', {
+      userId: user.id,
+      employeeId: employeeId,
+      selectedMonth,
+      selectedYear,
+      totalRecords: records.length
+    });
+    
+    const filtered = records.filter(r => {
+      // Handle both string and object employeeId
+      const recordEmployeeId = typeof r.employeeId === 'object' 
+        ? (r.employeeId._id || r.employeeId.id) 
+        : r.employeeId;
+      
+      // Parse date correctly (handle YYYY-MM-DD format)
+      const recordDate = new Date(r.date + 'T00:00:00');
+      const monthMatch = recordDate.getMonth() === selectedMonth;
+      const yearMatch = recordDate.getFullYear() === selectedYear;
+      const employeeMatch = recordEmployeeId === employeeId || recordEmployeeId === user.id;
+      
+      console.log('  Record check:', {
+        date: r.date,
+        recordEmployeeId,
+        employeeMatch,
+        monthMatch,
+        yearMatch,
+        included: employeeMatch && monthMatch && yearMatch
+      });
+      
+      return employeeMatch && monthMatch && yearMatch;
+    });
+    
+    console.log('✅ Filtered records:', filtered.length);
+    
+    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [records, user.id, user.email, selectedMonth, selectedYear, isEmployeeView, employees]);
 
   const handleStatusChange = async (employeeId: string, newStatus: AttendanceStatus) => {
     if (!canEdit) return;

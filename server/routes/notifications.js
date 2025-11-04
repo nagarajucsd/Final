@@ -40,6 +40,28 @@ router.post('/', protect, async (req, res) => {
   }
 });
 
+// @route   PUT /api/notifications/mark-all-read
+// @desc    Mark all notifications as read for current user
+// @access  Private
+router.put('/mark-all-read', protect, async (req, res) => {
+  try {
+    const result = await Notification.updateMany(
+      { userId: req.user._id, read: false },
+      { $set: { read: true } }
+    );
+
+    console.log(`✅ Marked ${result.modifiedCount} notifications as read for user ${req.user._id}`);
+
+    res.json({ 
+      message: 'All notifications marked as read',
+      modifiedCount: result.modifiedCount
+    });
+  } catch (error) {
+    console.error('Mark all read error:', error);
+    res.status(500).json({ message: 'Server error marking notifications as read' });
+  }
+});
+
 // @route   PUT /api/notifications/:id
 // @desc    Mark notification as read
 // @access  Private
@@ -66,22 +88,7 @@ router.put('/:id', protect, async (req, res) => {
   }
 });
 
-// @route   PUT /api/notifications/mark-all-read
-// @desc    Mark all notifications as read for current user
-// @access  Private
-router.put('/mark-all-read', protect, async (req, res) => {
-  try {
-    await Notification.updateMany(
-      { userId: req.user._id, read: false },
-      { $set: { read: true } }
-    );
 
-    res.json({ message: 'All notifications marked as read' });
-  } catch (error) {
-    console.error('Mark all read error:', error);
-    res.status(500).json({ message: 'Server error marking notifications as read' });
-  }
-});
 
 // @route   DELETE /api/notifications/:id
 // @desc    Delete notification

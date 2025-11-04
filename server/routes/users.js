@@ -1,5 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
+import Employee from '../models/Employee.js';
+import Notification from '../models/Notification.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -100,6 +102,72 @@ router.put('/:id', protect, async (req, res) => {
     }
 
     const updatedUser = await user.save();
+
+    // Sync changes to Employee collection
+    try {
+      const updateFields = {};
+      if (name) updateFields.name = name;
+      if (email) updateFields.email = email.toLowerCase();
+      if (avatarUrl) updateFields.avatarUrl = avatarUrl;
+
+      if (Object.keys(updateFields).length > 0) {
+        await Employee.updateOne(
+          { userId: user._id },
+          { $set: updateFields }
+        );
+        console.log('✅ Employee record synced for user:', user.email);
+      }
+    } catch (empError) {
+      console.error('❌ Error syncing employee record:', empError);
+      // Don't fail the user update if employee sync fails
+    }
+
+    // Notify HR, Admin, and Managers about profile update (ONLY ONCE - DELETE OLD FIRST)
+    try {
+      // Only notify if employee updated their own profile AND something actually changed
+      if (req.user._id.toString() === req.params.id && 
+          req.user.role === 'Employee' && 
+          (name || email || avatarUrl)) {
+        
+        const changedFields = [];
+        if (name) changedFields.push('name');
+        if (email) changedFields.push('email');
+        if (avatarUrl) changedFields.push('profile photo');
+
+        // Get all HR, Admin, and Manager users
+        const notifyUsers = await User.find({
+          role: { $in: ['Admin', 'HR', 'Manager'] },
+          isActive: true
+        });
+
+        // Create a single consolidated notification message
+        const message = `${updatedUser.name} updated their ${changedFields.join(', ')}`;
+        const title = 'Employee Profile Updated';
+
+        // DELETE any existing similar notifications from last 10 minutes (prevent spam)
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+        await Notification.deleteMany({
+          userId: { $in: notifyUsers.map(u => u._id) },
+          title: title,
+          message: { $regex: `^${updatedUser.name} updated their` },
+          createdAt: { $gte: tenMinutesAgo }
+        });
+        
+        // Now create ONE new notification for each user
+        const notifications = notifyUsers.map(notifyUser => ({
+          userId: notifyUser._id,
+          title: title,
+          message: message,
+          link: `/employees/${req.params.id}`
+        }));
+
+        await Notification.insertMany(notifications);
+        console.log(`✅ Created ${notifications.length} notifications (deleted old duplicates first)`);
+      }
+    } catch (notifyError) {
+      console.error('❌ Error creating notifications:', notifyError);
+      // Don't fail the update if notification fails
+    }
 
     res.json({
       id: updatedUser._id,

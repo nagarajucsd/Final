@@ -11,10 +11,9 @@ interface MFAVerificationPageProps {
   user: { id: string; email: string };
   onComplete: () => void;
   onMfaRecovery?: () => void;
-  onEmailVerification?: () => void;
 }
 
-const MFAVerificationPage: React.FC<MFAVerificationPageProps> = ({ user, onComplete, onMfaRecovery, onEmailVerification }) => {
+const MFAVerificationPage: React.FC<MFAVerificationPageProps> = ({ user, onComplete, onMfaRecovery }) => {
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { addToast } = useToast();
@@ -79,17 +78,6 @@ const MFAVerificationPage: React.FC<MFAVerificationPageProps> = ({ user, onCompl
           </form>
 
           <div className="text-center space-y-2 mt-4">
-            {onEmailVerification && (
-              <button
-                type="button"
-                onClick={onEmailVerification}
-                className="text-sm text-primary hover:underline"
-                disabled={isLoading}
-              >
-                Use email verification instead
-              </button>
-            )}
-
             {onMfaRecovery && (
               <div>
                 <button

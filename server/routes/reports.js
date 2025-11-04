@@ -3,7 +3,6 @@ import Employee from '../models/Employee.js';
 import Attendance from '../models/Attendance.js';
 import LeaveRequest from '../models/LeaveRequest.js';
 import Payroll from '../models/Payroll.js';
-import ExitInterview from '../models/ExitInterview.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -95,10 +94,14 @@ router.get('/attendance', protect, authorize('Admin', 'HR', 'Manager'), async (r
     if (startDate || endDate) {
       query.date = {};
       if (startDate) {
-        query.date.$gte = new Date(startDate);
+        // Handle date string format (YYYY-MM-DD)
+        const startDateStr = startDate.includes('T') ? startDate.split('T')[0] : startDate;
+        query.date.$gte = startDateStr;
       }
       if (endDate) {
-        query.date.$lte = new Date(endDate);
+        // Handle date string format (YYYY-MM-DD)
+        const endDateStr = endDate.includes('T') ? endDate.split('T')[0] : endDate;
+        query.date.$lte = endDateStr;
       }
     }
 
@@ -244,85 +247,89 @@ router.get('/payroll', protect, authorize('Admin', 'HR'), async (req, res) => {
   }
 });
 
-// @route   GET /api/reports/exit-interviews
-// @desc    Get exit interviews report
-// @access  Private (Admin, HR)
-router.get('/exit-interviews', protect, authorize('Admin', 'HR'), async (req, res) => {
+// @route   GET /api/reports/attendance-summary
+// @desc    Get attendance summary report
+// @access  Private (Admin, HR, Manager)
+router.get('/attendance-summary', protect, authorize('Admin, HR, Manager'), async (req, res) => {
   try {
-    const { status, startDate, endDate } = req.query;
+    const { startDate, endDate, departmentId } = req.query;
     
-    let query = {};
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Start date and end date are required' });
+    }
     
-    if (status) {
-      query.status = status;
-    }
-
-    if (startDate || endDate) {
-      query.resignationDate = {};
-      if (startDate) {
-        query.resignationDate.$gte = new Date(startDate);
+    // Handle date string format
+    const startDateStr = startDate.includes('T') ? startDate.split('T')[0] : startDate;
+    const endDateStr = endDate.includes('T') ? endDate.split('T')[0] : endDate;
+    
+    let query = {
+      date: {
+        $gte: startDateStr,
+        $lte: endDateStr
       }
-      if (endDate) {
-        query.resignationDate.$lte = new Date(endDate);
-      }
+    };
+    
+    // Get all attendance records for the period
+    const attendanceRecords = await Attendance.find(query).populate('employeeId');
+    
+    // Filter by department if specified
+    let filteredRecords = attendanceRecords;
+    if (departmentId) {
+      filteredRecords = attendanceRecords.filter(r => 
+        r.employeeId && r.employeeId.departmentId && 
+        r.employeeId.departmentId.toString() === departmentId
+      );
     }
-
-    const exitInterviews = await ExitInterview.find(query)
-      .populate('employeeId')
-      .populate('userId', 'name email')
-      .sort({ createdAt: -1 });
-
-    const report = {
-      totalInterviews: exitInterviews.length,
-      byReason: {},
-      byStatus: {},
-      averageRatings: {
-        overall: 0,
-        management: 0,
-        workEnvironment: 0,
-        compensation: 0,
-        careerGrowth: 0
-      },
-      wouldRecommendCount: 0,
-      wouldRejoinCount: 0,
-      interviews: exitInterviews
-    };
-
-    let totalRatings = {
-      overall: 0,
-      management: 0,
-      workEnvironment: 0,
-      compensation: 0,
-      careerGrowth: 0
-    };
-
+    
     // Calculate statistics
-    exitInterviews.forEach(interview => {
-      report.byReason[interview.reasonForLeaving] = (report.byReason[interview.reasonForLeaving] || 0) + 1;
-      report.byStatus[interview.status] = (report.byStatus[interview.status] || 0) + 1;
-      
-      totalRatings.overall += interview.overallExperience || 0;
-      totalRatings.management += interview.managementRating || 0;
-      totalRatings.workEnvironment += interview.workEnvironmentRating || 0;
-      totalRatings.compensation += interview.compensationRating || 0;
-      totalRatings.careerGrowth += interview.careerGrowthRating || 0;
-      
-      if (interview.wouldRecommend) report.wouldRecommendCount++;
-      if (interview.wouldRejoin) report.wouldRejoinCount++;
+    const stats = {
+      totalRecords: filteredRecords.length,
+      presentCount: 0,
+      absentCount: 0,
+      leaveCount: 0,
+      halfDayCount: 0,
+      notMarkedCount: 0,
+      totalWorkHours: 0,
+      averageWorkHours: 0
+    };
+    
+    filteredRecords.forEach(record => {
+      switch (record.status) {
+        case 'Present':
+          stats.presentCount++;
+          if (record.workMinutes) {
+            stats.totalWorkHours += record.workMinutes / 60;
+          }
+          break;
+        case 'Absent':
+          stats.absentCount++;
+          break;
+        case 'Leave':
+          stats.leaveCount++;
+          break;
+        case 'Half-Day':
+          stats.halfDayCount++;
+          break;
+        case 'Not Marked':
+          stats.notMarkedCount++;
+          break;
+      }
     });
-
-    if (exitInterviews.length > 0) {
-      report.averageRatings.overall = (totalRatings.overall / exitInterviews.length).toFixed(2);
-      report.averageRatings.management = (totalRatings.management / exitInterviews.length).toFixed(2);
-      report.averageRatings.workEnvironment = (totalRatings.workEnvironment / exitInterviews.length).toFixed(2);
-      report.averageRatings.compensation = (totalRatings.compensation / exitInterviews.length).toFixed(2);
-      report.averageRatings.careerGrowth = (totalRatings.careerGrowth / exitInterviews.length).toFixed(2);
+    
+    if (stats.presentCount > 0) {
+      stats.averageWorkHours = (stats.totalWorkHours / stats.presentCount).toFixed(2);
     }
-
-    res.json(report);
+    
+    // Calculate attendance percentage
+    const totalWorkingDays = stats.presentCount + stats.absentCount + stats.halfDayCount;
+    stats.attendancePercentage = totalWorkingDays > 0 
+      ? ((stats.presentCount / totalWorkingDays) * 100).toFixed(2)
+      : 0;
+    
+    res.json(stats);
   } catch (error) {
-    console.error('Get exit interviews report error:', error);
-    res.status(500).json({ message: 'Server error generating exit interviews report' });
+    console.error('Get attendance summary error:', error);
+    res.status(500).json({ message: 'Server error generating attendance summary' });
   }
 });
 
@@ -361,9 +368,6 @@ router.get('/dashboard-stats', protect, authorize('Admin', 'HR', 'Manager'), asy
       status: 'Present'
     });
 
-    // Count exit interviews
-    const pendingExitInterviews = await ExitInterview.countDocuments({ status: 'Pending' });
-
     // Payroll stats
     const pendingPayroll = await Payroll.countDocuments({ 
       status: 'Pending Approval',
@@ -382,9 +386,6 @@ router.get('/dashboard-stats', protect, authorize('Admin', 'HR', 'Manager'), asy
       },
       attendance: {
         presentToday: todayAttendance
-      },
-      exitInterviews: {
-        pending: pendingExitInterviews
       },
       payroll: {
         pendingApproval: pendingPayroll

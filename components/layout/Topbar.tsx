@@ -36,6 +36,7 @@ const Topbar: React.FC<TopbarProps> = ({ user, onLogout, onToggleSidebar, setAct
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   
+  // Show notification badge for all users (Employee, Admin, HR, Manager)
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
@@ -53,15 +54,34 @@ const Topbar: React.FC<TopbarProps> = ({ user, onLogout, onToggleSidebar, setAct
     };
   }, []);
   
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read in backend
+    try {
+      const { notificationService } = await import('../../services/notificationService');
+      await notificationService.markAsRead(notification.id);
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+    
+    // Update local state
     setNotifications(notifications.map(n => n.id === notification.id ? {...n, read: true} : n));
+    
     if (notification.link) {
         setActivePage(notification.link);
     }
     setNotificationsOpen(false);
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    // Mark all as read in backend
+    try {
+      const { notificationService } = await import('../../services/notificationService');
+      await notificationService.markAllAsRead();
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    }
+    
+    // Update local state
     setNotifications(notifications.map(n => ({...n, read: true})));
   };
 
@@ -77,6 +97,7 @@ const Topbar: React.FC<TopbarProps> = ({ user, onLogout, onToggleSidebar, setAct
         <div className="relative" ref={notificationsRef}>
             <button onClick={() => setNotificationsOpen(prev => !prev)} className="relative p-3 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground">
                 <Icon name="bell" className="h-6 w-6" />
+                {/* Show red dot badge for all users when there are unread notifications */}
                 {unreadCount > 0 && (
                     <span className="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-white text-[9px] font-medium ring-2 ring-card">{unreadCount}</span>
                 )}
@@ -100,7 +121,7 @@ const Topbar: React.FC<TopbarProps> = ({ user, onLogout, onToggleSidebar, setAct
                                         <div className="flex-1">
                                             <p className={`font-semibold text-foreground ${!n.read ? 'font-bold' : ''}`}>{n.title}</p>
                                             <p className="text-sm text-muted-foreground">{n.message}</p>
-                                            <p className="text-xs text-muted-foreground/80 mt-1">{timeAgo(n.timestamp)}</p>
+                                            <p className="text-xs text-muted-foreground/80 mt-1">{timeAgo(n.timestamp || (n as any).createdAt)}</p>
                                         </div>
                                         {!n.read && <div className="w-2.5 h-2.5 rounded-full bg-primary self-center flex-shrink-0 animate-pulse"></div>}
                                     </div>
@@ -115,7 +136,15 @@ const Topbar: React.FC<TopbarProps> = ({ user, onLogout, onToggleSidebar, setAct
                         )}
                     </ul>
                     <div className="p-2 border-t border-popover-border text-center">
-                        <button className="text-sm text-primary font-semibold hover:underline w-full p-2 rounded-lg hover:bg-secondary/50">View All Notifications</button>
+                        <button 
+                          onClick={() => {
+                            setActivePage('Notifications');
+                            setNotificationsOpen(false);
+                          }}
+                          className="text-sm text-primary font-semibold hover:underline w-full p-2 rounded-lg hover:bg-secondary/50"
+                        >
+                          View All Notifications
+                        </button>
                     </div>
                 </div>
             )}

@@ -13,6 +13,8 @@ const MfaRecoveryVerifyPage: React.FC = () => {
   const navigate = useNavigate();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const { addToast } = useToast();
@@ -94,15 +96,27 @@ const MfaRecoveryVerifyPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="newPassword">New Password (Optional)</Label>
-              <Input
-                type="password"
-                id="newPassword"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Leave blank to keep current password"
-                disabled={isLoading}
-                icon="lock"
-              />
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? "text" : "password"}
+                  id="newPassword"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Leave blank to keep current password"
+                  disabled={isLoading}
+                  icon="lock"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 z-10 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors"
+                  title={showNewPassword ? "Hide password" : "Show password"}
+                  disabled={isLoading}
+                >
+                  <Icon name={showNewPassword ? "eye-off" : "eye"} className="w-5 h-5" />
+                </button>
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 If you leave this blank, your current password will remain unchanged.
               </p>
@@ -111,16 +125,28 @@ const MfaRecoveryVerifyPage: React.FC = () => {
             {newPassword && (
               <div>
                 <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input
-                  type="password"
-                  id="confirmPassword"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your new password"
-                  required
-                  disabled={isLoading}
-                  icon="lock"
-                />
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    id="confirmPassword"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm your new password"
+                    required
+                    disabled={isLoading}
+                    icon="lock"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors"
+                    title={showConfirmPassword ? "Hide password" : "Show password"}
+                    disabled={isLoading}
+                  >
+                    <Icon name={showConfirmPassword ? "eye-off" : "eye"} className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
             )}
 

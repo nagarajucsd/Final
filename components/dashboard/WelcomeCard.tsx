@@ -10,6 +10,7 @@ interface WelcomeCardProps {
     onClockOut: () => void;
     weeklyAccumulatedMs: number;
     isWeeklyTimerActive: boolean;
+    lastClockActionTime?: number;
 }
 
 const getGreeting = () => {
@@ -46,7 +47,7 @@ const WelcomeCard: React.FC<WelcomeCardProps> = (props) => {
             <div className="mt-8">
                  {props.todayAttendanceRecord ? (
                     <div className="bg-black/20 rounded-xl">
-                        <LiveWorkTimer {...props} record={props.todayAttendanceRecord} />
+                        <LiveWorkTimer {...props} record={props.todayAttendanceRecord} lastActionTime={props.lastClockActionTime} />
                     </div>
                  ) : (
                     <div className="bg-black/20 rounded-xl p-6 text-center">

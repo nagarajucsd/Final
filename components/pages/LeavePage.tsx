@@ -1,7 +1,6 @@
 import React from 'react';
 import LeaveApplyForm from '../leave/LeaveApplyForm';
 import LeaveHistoryTable from '../leave/LeaveHistoryTable';
-import LeaveBalanceCard from '../leave/LeaveBalanceCard';
 import HolidayList from '../leave/HolidayList';
 import { LeaveRequest, LeaveBalanceItem, Holiday, User } from '../../types';
 import { upcomingHolidays as mockHolidays } from '../../data/mockData';
@@ -11,10 +10,25 @@ interface LeavePageProps {
     leaveRequests: LeaveRequest[];
     onApplyLeave: (newRequest: Omit<LeaveRequest, 'id' | 'status' | 'days' | 'employeeId' | 'employeeName'>) => void;
     leaveBalances: LeaveBalanceItem[];
+    currentEmployeeId?: string;
 }
 
-const LeavePage: React.FC<LeavePageProps> = ({ user, leaveRequests, onApplyLeave, leaveBalances }) => {
-  const userLeaveRequests = leaveRequests.filter(r => r.employeeId === user.id);
+const LeavePage: React.FC<LeavePageProps> = ({ user, leaveRequests, onApplyLeave, leaveBalances, currentEmployeeId }) => {
+  // Filter by employee ID if provided, otherwise try to match by user email
+  const userLeaveRequests = leaveRequests.filter(r => {
+    if (currentEmployeeId) {
+      // Handle both string and object employeeId, and both id and _id
+      const requestEmpId = typeof r.employeeId === 'object' 
+        ? ((r.employeeId as any)._id || (r.employeeId as any).id) 
+        : r.employeeId;
+      return requestEmpId === currentEmployeeId || requestEmpId === user.id;
+    }
+    // Fallback: try to match by employeeName or user.id
+    const requestEmpId = typeof r.employeeId === 'object' 
+      ? ((r.employeeId as any)._id || (r.employeeId as any).id) 
+      : r.employeeId;
+    return requestEmpId === user.id || r.employeeName === user.name;
+  });
 
   return (
       <div>
@@ -25,7 +39,6 @@ const LeavePage: React.FC<LeavePageProps> = ({ user, leaveRequests, onApplyLeave
             <LeaveHistoryTable requests={userLeaveRequests} />
           </div>
           <div className="space-y-8">
-            <LeaveBalanceCard balances={leaveBalances} />
             <HolidayList holidays={mockHolidays} />
           </div>
         </div>

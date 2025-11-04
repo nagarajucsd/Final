@@ -142,6 +142,7 @@ export interface Holiday {
 
 export interface Notification {
     id: string;
+    userId: string; // User who should receive this notification
     title: string;
     message: string;
     timestamp: string;

@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import Employee from '../models/Employee.js';
 import User from '../models/User.js';
 import LeaveBalance from '../models/LeaveBalance.js';
+import Notification from '../models/Notification.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { sendWelcomeEmail } from '../utils/emailService.js';
 
@@ -105,7 +106,8 @@ router.post('/', protect, authorize('Admin', 'HR'), async (req, res) => {
       joinDate,
       status: status || 'Active',
       employeeType: employeeType || 'Permanent',
-      salary
+      salary,
+      currentPassword: tempPassword
     });
 
     // Create default leave balance (unlimited)
@@ -178,6 +180,43 @@ router.put('/:id', protect, authorize('Admin', 'HR'), async (req, res) => {
       }
     }
 
+    // Notify the employee about changes made by Admin/HR (ONLY ONCE - DELETE OLD FIRST)
+    try {
+      const changedFields = [];
+      if (name) changedFields.push('name');
+      if (email) changedFields.push('email');
+      if (phone) changedFields.push('phone');
+      if (departmentId) changedFields.push('department');
+      if (role) changedFields.push('role');
+      if (salary !== undefined) changedFields.push('salary');
+      if (status) changedFields.push('status');
+
+      if (changedFields.length > 0) {
+        const message = `Your ${changedFields.join(', ')} has been updated by ${req.user.name}`;
+        const title = 'Profile Updated by Admin';
+        
+        // DELETE any existing similar notifications from last 10 minutes (prevent spam)
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+        await Notification.deleteMany({
+          userId: employee.userId,
+          title: title,
+          message: { $regex: '^Your .* has been updated by' },
+          createdAt: { $gte: tenMinutesAgo }
+        });
+
+        // Now create ONE new notification
+        await Notification.create({
+          userId: employee.userId,
+          title: title,
+          message: message,
+          link: '/profile'
+        });
+        console.log(`✅ Notified employee (deleted old duplicates first)`);
+      }
+    } catch (notifyError) {
+      console.error('❌ Error creating notification:', notifyError);
+    }
+
     const populatedEmployee = await Employee.findById(updatedEmployee._id)
       .populate('departmentId')
       .populate('userId');
@@ -186,6 +225,56 @@ router.put('/:id', protect, authorize('Admin', 'HR'), async (req, res) => {
   } catch (error) {
     console.error('Update employee error:', error);
     res.status(500).json({ message: 'Server error updating employee' });
+  }
+});
+
+// @route   PUT /api/employees/:id/password
+// @desc    Admin/HR change employee password
+// @access  Private (Admin, HR)
+router.put('/:id/password', protect, authorize('Admin', 'HR'), async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+
+    if (!newPassword) {
+      return res.status(400).json({ message: 'New password is required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const employee = await Employee.findById(req.params.id);
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Update user password
+    const user = await User.findById(employee.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User account not found' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    // Update employee currentPassword
+    employee.currentPassword = newPassword;
+    await employee.save();
+
+    console.log(`✅ Admin ${req.user.name} changed password for ${employee.name}`);
+
+    res.json({ 
+      message: 'Password updated successfully',
+      employee: {
+        id: employee._id,
+        name: employee.name,
+        email: employee.email
+      }
+    });
+  } catch (error) {
+    console.error('Admin change password error:', error);
+    res.status(500).json({ message: 'Server error changing password' });
   }
 });
 

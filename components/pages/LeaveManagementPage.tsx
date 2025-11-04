@@ -7,6 +7,8 @@ import Dialog from '../common/Dialog';
 import { useToast } from '../../hooks/useToast';
 import Textarea from '../common/Textarea';
 import Label from '../common/Label';
+import Input from '../common/Input';
+import Icon from '../common/Icon';
 
 const StatusBadge: React.FC<{ status: LeaveStatus }> = ({ status }) => {
   const statusClasses: Record<LeaveStatus, string> = {
@@ -32,13 +34,42 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({ leaveRequests
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [action, setAction] = useState<'approve' | 'reject' | null>(null);
   const [comment, setComment] = useState('');
+  const [searchName, setSearchName] = useState('');
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
   const { addToast } = useToast();
 
   const filteredRequests = useMemo(() => {
-    const sortedRequests = [...leaveRequests].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-    if (filter === 'all') return sortedRequests;
-    return sortedRequests.filter(req => req.status === filter);
-  }, [leaveRequests, filter]);
+    let filtered = [...leaveRequests];
+    
+    // Filter by status
+    if (filter !== 'all') {
+      filtered = filtered.filter(req => req.status === filter);
+    }
+    
+    // Filter by employee name
+    if (searchName.trim()) {
+      filtered = filtered.filter(req => 
+        req.employeeName.toLowerCase().includes(searchName.toLowerCase())
+      );
+    }
+    
+    // Filter by date range
+    if (startDateFilter) {
+      filtered = filtered.filter(req => 
+        new Date(req.startDate) >= new Date(startDateFilter)
+      );
+    }
+    
+    if (endDateFilter) {
+      filtered = filtered.filter(req => 
+        new Date(req.endDate) <= new Date(endDateFilter)
+      );
+    }
+    
+    // Sort by start date (newest first)
+    return filtered.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+  }, [leaveRequests, filter, searchName, startDateFilter, endDateFilter]);
 
   const openActionModal = (request: LeaveRequest, actionType: 'approve' | 'reject') => {
     setSelectedRequest(request);
@@ -63,8 +94,9 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({ leaveRequests
       <div>
         <h1 className="text-3xl font-bold text-foreground mb-6">Leave Requests Management</h1>
         <Card>
+          {/* Status Filter Tabs */}
           <div className="p-4 border-b border-border">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 overflow-x-auto">
               {(['all', ...Object.values(LeaveStatus)] as const).map(status => (
                 <Button 
                   key={status}
@@ -76,6 +108,81 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({ leaveRequests
                 </Button>
               ))}
             </div>
+          </div>
+
+          {/* Search and Date Filters */}
+          <div className="p-4 border-b border-border bg-muted/30">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Employee Name Search */}
+              <div>
+                <Label htmlFor="searchName" className="text-sm font-medium mb-2">
+                  Search Employee
+                </Label>
+                <div className="relative">
+                  <Icon name="user" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="searchName"
+                    type="text"
+                    placeholder="Enter employee name..."
+                    value={searchName}
+                    onChange={(e) => setSearchName(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              {/* Start Date Filter */}
+              <div>
+                <Label htmlFor="startDate" className="text-sm font-medium mb-2">
+                  From Date
+                </Label>
+                <div className="relative">
+                  <Icon name="calendar" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={startDateFilter}
+                    onChange={(e) => setStartDateFilter(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              {/* End Date Filter */}
+              <div>
+                <Label htmlFor="endDate" className="text-sm font-medium mb-2">
+                  To Date
+                </Label>
+                <div className="relative">
+                  <Icon name="calendar" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={endDateFilter}
+                    onChange={(e) => setEndDateFilter(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Clear Filters Button */}
+            {(searchName || startDateFilter || endDateFilter) && (
+              <div className="mt-3 flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchName('');
+                    setStartDateFilter('');
+                    setEndDateFilter('');
+                  }}
+                >
+                  <Icon name="x" className="w-4 h-4 mr-2" />
+                  Clear Filters
+                </Button>
+              </div>
+            )}
           </div>
           <div className="overflow-x-auto">
             <Table>
@@ -90,23 +197,35 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({ leaveRequests
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRequests.map(req => (
-                  <TableRow key={req.id}>
-                    <TableCell className="font-medium">{req.employeeName}</TableCell>
-                    <TableCell>{req.leaveType}</TableCell>
-                    <TableCell>{`${req.startDate} to ${req.endDate}`}</TableCell>
-                    <TableCell>{req.days}</TableCell>
-                    <TableCell><StatusBadge status={req.status} /></TableCell>
-                    <TableCell>
-                      {req.status === LeaveStatus.Pending && (
-                        <div className="flex space-x-2">
-                          <Button variant="outline" size="sm" onClick={() => openActionModal(req, 'approve')}>Approve</Button>
-                          <Button variant="destructive" size="sm" onClick={() => openActionModal(req, 'reject')}>Reject</Button>
-                        </div>
-                      )}
+                {filteredRequests.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <div className="flex flex-col items-center">
+                        <Icon name="calendar" className="w-12 h-12 mb-3 opacity-50" />
+                        <p className="text-lg font-medium">No leave requests found</p>
+                        <p className="text-sm">Try adjusting your filters</p>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredRequests.map(req => (
+                    <TableRow key={req.id}>
+                      <TableCell className="font-medium">{req.employeeName}</TableCell>
+                      <TableCell>{req.leaveType}</TableCell>
+                      <TableCell>{`${req.startDate} to ${req.endDate}`}</TableCell>
+                      <TableCell>{req.days}</TableCell>
+                      <TableCell><StatusBadge status={req.status} /></TableCell>
+                      <TableCell>
+                        {req.status === LeaveStatus.Pending && (
+                          <div className="flex space-x-2">
+                            <Button variant="outline" size="sm" onClick={() => openActionModal(req, 'approve')}>Approve</Button>
+                            <Button variant="destructive" size="sm" onClick={() => openActionModal(req, 'reject')}>Reject</Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>

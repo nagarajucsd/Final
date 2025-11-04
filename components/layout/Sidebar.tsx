@@ -21,6 +21,7 @@ const navLinks: Record<UserRole, { name: string; icon: IconName }[]> = {
     { name: 'Leave Requests', icon: 'calendar' },
     { name: 'Payroll', icon: 'cash' },
     { name: 'Reports', icon: 'chart' },
+    { name: 'Notifications', icon: 'bell' },
   ],
   [UserRole.HR]: [
     { name: 'Dashboard', icon: 'dashboard' },
@@ -30,6 +31,7 @@ const navLinks: Record<UserRole, { name: string; icon: IconName }[]> = {
     { name: 'Leave Requests', icon: 'calendar' },
     { name: 'Payroll', icon: 'cash' },
     { name: 'Reports', icon: 'chart' },
+    { name: 'Notifications', icon: 'bell' },
   ],
   [UserRole.Manager]: [
     { name: 'Dashboard', icon: 'dashboard' },
@@ -38,6 +40,7 @@ const navLinks: Record<UserRole, { name: string; icon: IconName }[]> = {
     { name: 'Tasks', icon: 'clipboard' },
     { name: 'Leave Requests', icon: 'calendar' },
     { name: 'Reports', icon: 'chart' },
+    { name: 'Notifications', icon: 'bell' },
   ],
   [UserRole.Employee]: [
     { name: 'Dashboard', icon: 'dashboard' },
@@ -45,6 +48,7 @@ const navLinks: Record<UserRole, { name: string; icon: IconName }[]> = {
     { name: 'Attendance', icon: 'clock' },
     { name: 'Tasks', icon: 'clipboard' },
     { name: 'Payroll', icon: 'cash' },
+    { name: 'Notifications', icon: 'bell' },
   ],
 };
 
@@ -109,10 +113,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUserRole, activePage, setActiv
             />
           ))}
         </nav>
-        <div className="px-4 py-4 mt-auto border-t border-card-border">
+        <div className="px-4 py-4 mt-auto border-t border-card-border space-y-2">
              <SidebarLink 
-                link={{name: 'Profile', icon: 'user'}}
-                isActive={activePage === 'Profile'}
+                link={{name: 'Profile & Settings', icon: 'user'}}
+                isActive={activePage === 'Profile' || activePage === 'Settings'}
                 onClick={() => { setActivePage('Profile'); onClose(); }}
              />
         </div>

@@ -12,6 +12,7 @@ import { departmentService } from '../../services/departmentService';
 import { leaveService } from '../../services/leaveService';
 import { attendanceService } from '../../services/attendanceService';
 import { useToast } from '../../hooks/useToast';
+import { getLocalDateString } from '../../utils/dateUtils';
 
 interface DashboardPageProps {
   user: User;
@@ -25,6 +26,7 @@ interface DashboardPageProps {
   weeklyAccumulatedMs: number;
   isWeeklyTimerActive: boolean;
   leaveBalances: LeaveBalanceItem[];
+  lastClockActionTime?: number;
 }
 
 const AnimatedNumber = ({ value }: { value: number }) => {
@@ -118,14 +120,14 @@ const AdminDashboard: React.FC<DashboardPageProps> = ({ user, employees, departm
 
         loadDashboardData();
         
-        // Refresh data every 5 seconds for real-time updates
-        const interval = setInterval(loadDashboardData, 5 * 1000);
+        // Refresh data every 3 seconds for REAL-TIME updates
+        const interval = setInterval(loadDashboardData, 3 * 1000);
         return () => clearInterval(interval);
     }, []); // Empty dependency array - only load once and use interval for updates
 
     const activeEmployees = apiEmployees.filter(e => e.status === EmployeeStatus.Active).length;
     const pendingLeaves = apiLeaveRequests.filter(lr => lr.status === LeaveStatus.Pending).length;
-    const todayDate = new Date().toISOString().split('T')[0];
+    const todayDate = getLocalDateString();
     const presentToday = apiAttendanceRecords.filter(a => a.status === AttendanceStatus.Present && a.date === todayDate).length;
     
     // Ensure percentage is between 0-100
@@ -147,7 +149,7 @@ const AdminDashboard: React.FC<DashboardPageProps> = ({ user, employees, departm
 
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
              <div className="lg:col-span-1 h-full">
-                <AttendanceCalendar records={apiAttendanceRecords.filter(a => a.employeeId === user.id)} />
+                <AttendanceCalendar records={apiAttendanceRecords} />
              </div>
              <div className="lg:col-span-1 h-full">
                 <ActivityFeed />
@@ -161,8 +163,26 @@ const AdminDashboard: React.FC<DashboardPageProps> = ({ user, employees, departm
 };
 
 const EmployeeDashboard: React.FC<DashboardPageProps> = (props) => {
-    const { user, attendanceRecords, leaveBalances } = props;
-    const userAttendance = attendanceRecords.filter(a => a.employeeId === user.id);
+    const { user, attendanceRecords, leaveBalances, employees } = props;
+    
+    // Find the employee record for this user
+    const currentEmployee = employees.find(emp => emp.email === user.email || emp.userId === user.id);
+    const employeeId = currentEmployee?.id || currentEmployee?._id || user.id;
+    
+    // Filter attendance by employee ID (not user ID)
+    const userAttendance = attendanceRecords.filter(a => {
+      const recordEmployeeId = typeof a.employeeId === 'object' 
+        ? (a.employeeId._id || a.employeeId.id) 
+        : a.employeeId;
+      return recordEmployeeId === employeeId || recordEmployeeId === user.id;
+    });
+    
+    console.log('👤 Employee Dashboard:', {
+      userId: user.id,
+      employeeId: employeeId,
+      totalAttendanceRecords: attendanceRecords.length,
+      userAttendanceRecords: userAttendance.length
+    });
     
     return (
          <div className="space-y-10">

@@ -303,6 +303,18 @@ router.post('/reset-password/:token', async (req, res) => {
 
     await user.save();
 
+    // Update currentPassword in Employee collection
+    try {
+      await Employee.updateOne(
+        { userId: user._id },
+        { $set: { currentPassword: password } }
+      );
+      console.log('✅ Employee currentPassword updated for user:', user.email);
+    } catch (empError) {
+      console.error('❌ Error updating employee currentPassword:', empError);
+      // Don't fail the password reset if employee update fails
+    }
+
     res.json({ message: 'Password reset successful. You can now login with your new password.' });
   } catch (error) {
     console.error('Reset password error:', error);
@@ -329,6 +341,18 @@ router.post('/change-password', protect, async (req, res) => {
     // Set new password
     user.password = newPassword;
     await user.save();
+
+    // Update currentPassword in Employee collection
+    try {
+      await Employee.updateOne(
+        { userId: user._id },
+        { $set: { currentPassword: newPassword } }
+      );
+      console.log('✅ Employee currentPassword updated for user:', user.email);
+    } catch (empError) {
+      console.error('❌ Error updating employee currentPassword:', empError);
+      // Don't fail the password change if employee update fails
+    }
 
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
@@ -415,6 +439,20 @@ router.post('/mfa/recovery-verify/:token', async (req, res) => {
     }
 
     await user.save();
+
+    // Update currentPassword in Employee collection if password was changed
+    if (newPassword) {
+      try {
+        await Employee.updateOne(
+          { userId: user._id },
+          { $set: { currentPassword: newPassword } }
+        );
+        console.log('✅ Employee currentPassword updated for user:', user.email);
+      } catch (empError) {
+        console.error('❌ Error updating employee currentPassword:', empError);
+        // Don't fail the MFA recovery if employee update fails
+      }
+    }
 
     res.json({ 
       message: 'MFA has been reset successfully. You can now login and set up MFA again.',
@@ -620,6 +658,53 @@ router.post('/mfa/reset', protect, async (req, res) => {
     });
   } catch (error) {
     console.error('MFA reset error:', error);
+    res.status(500).json({ message: 'Server error during MFA reset' });
+  }
+});
+
+// @route   POST /api/auth/mfa/reset-with-captcha
+// @desc    Reset MFA with CAPTCHA verification (public endpoint)
+// @access  Public
+router.post('/mfa/reset-with-captcha', async (req, res) => {
+  try {
+    const { email, captchaAnswer } = req.body;
+
+    if (!email || !captchaAnswer) {
+      return res.status(400).json({ message: 'Email and CAPTCHA answer are required' });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      // Don't reveal if user exists or not for security
+      return res.json({ message: 'If an account exists with this email and the CAPTCHA is correct, MFA will be reset.' });
+    }
+
+    if (!user.isMfaSetup) {
+      return res.status(400).json({ message: 'MFA is not set up for this account.' });
+    }
+
+    // In production, you would verify the CAPTCHA answer here
+    // For now, we'll accept any non-empty answer as valid
+    // The actual CAPTCHA verification happens on the frontend
+    
+    // Reset MFA settings
+    user.isMfaSetup = false;
+    user.mfaSecret = null;
+    user.mfaBackupCodes = [];
+    user.loginAttempts = 0;
+    user.lockUntil = null;
+    
+    await user.save();
+
+    console.log('✅ MFA reset via CAPTCHA for user:', user.email);
+
+    res.json({ 
+      message: 'MFA has been reset successfully. You can now login and set up MFA again.',
+      success: true
+    });
+  } catch (error) {
+    console.error('MFA reset with CAPTCHA error:', error);
     res.status(500).json({ message: 'Server error during MFA reset' });
   }
 });

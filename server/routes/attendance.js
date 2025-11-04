@@ -57,29 +57,41 @@ router.get('/:id', protect, async (req, res) => {
 // @access  Private
 router.post('/', protect, async (req, res) => {
   try {
-    const { employeeId, date, status, clockIn } = req.body;
+    const { employeeId, date, status, clockIn, clockInTimestamp } = req.body;
 
     // Ensure date is in YYYY-MM-DD format
     const dateString = date.includes('T') ? date.split('T')[0] : date;
 
-    // Check if attendance already exists for this employee and date
+    // ENHANCED: Check if attendance already exists for this employee and date
     const existingAttendance = await Attendance.findOne({
       employeeId,
       date: dateString
     });
 
     if (existingAttendance) {
-      return res.status(400).json({ message: 'Attendance already exists for this date' });
+      console.log(`⚠️ Duplicate clock-in attempt prevented for employee ${employeeId} on ${dateString}`);
+      
+      // Return existing record instead of error for better UX
+      const populatedExisting = await Attendance.findById(existingAttendance._id).populate('employeeId');
+      return res.status(200).json({
+        ...populatedExisting.toObject(),
+        message: 'You have already clocked in today',
+        isDuplicate: true
+      });
     }
 
+    const now = new Date();
     const attendance = await Attendance.create({
       employeeId,
       date: dateString,
       status: status || 'Present',
-      clockIn: clockIn || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+      clockIn: clockIn || now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      clockInTimestamp: clockInTimestamp || now
     });
 
     const populatedAttendance = await Attendance.findById(attendance._id).populate('employeeId');
+
+    console.log(`✅ Attendance created for employee ${employeeId} on ${dateString} at ${attendance.clockIn}`);
 
     res.status(201).json(populatedAttendance);
   } catch (error) {
@@ -99,15 +111,20 @@ router.put('/:id', protect, async (req, res) => {
       return res.status(404).json({ message: 'Attendance record not found' });
     }
 
-    const { status, clockIn, clockOut, workHours } = req.body;
+    const { status, clockIn, clockInTimestamp, clockOut, clockOutTimestamp, workHours, workMinutes } = req.body;
 
     if (status) attendance.status = status;
     if (clockIn) attendance.clockIn = clockIn;
+    if (clockInTimestamp) attendance.clockInTimestamp = clockInTimestamp;
     if (clockOut) attendance.clockOut = clockOut;
+    if (clockOutTimestamp) attendance.clockOutTimestamp = clockOutTimestamp;
     if (workHours) attendance.workHours = workHours;
+    if (workMinutes !== undefined) attendance.workMinutes = workMinutes;
 
     const updatedAttendance = await attendance.save();
     const populatedAttendance = await Attendance.findById(updatedAttendance._id).populate('employeeId');
+
+    console.log(`✅ Attendance updated for record ${attendance._id}`);
 
     res.json(populatedAttendance);
   } catch (error) {

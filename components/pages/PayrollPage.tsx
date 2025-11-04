@@ -123,9 +123,18 @@ const PayslipDialog: React.FC<{
     employee: Employee | null,
     departments: Department[],
 }> = ({ isOpen, onClose, payslip, employee, departments }) => {
-    if (!isOpen || !payslip || !employee) return null;
+    // Debug logging
+    console.log('PayslipDialog:', { isOpen, hasPayslip: !!payslip, hasEmployee: !!employee });
+    
+    if (!isOpen || !payslip || !employee) {
+      console.log('PayslipDialog not rendering:', { isOpen, payslip: !!payslip, employee: !!employee });
+      return null;
+    }
 
-    const departmentName = departments.find(d => d.id === employee.departmentId)?.name || 'N/A';
+    // Handle both id and _id for department matching
+    const departmentName = departments.find(d => 
+      d.id === employee.departmentId || (d as any)._id === employee.departmentId
+    )?.name || 'N/A';
     const payslipHtml = generatePayslipHtml(payslip, employee, departmentName);
 
     const handleDownload = () => {
@@ -160,15 +169,23 @@ const PayslipDialog: React.FC<{
 // =================================================================
 
 const EmployeePayrollView: React.FC<PayrollPageProps> = ({ user, payrollRecords, employees, departments }) => {
+    // Find employee record for this user
+    const employee = employees.find(e => e.email === user.email || e.userId === user.id) || null;
+    const employeeId = employee?.id || employee?._id || user.id;
+    
     const myPayroll = useMemo(() => {
         return payrollRecords
-            .filter(p => p.employeeId === user.id)
+            .filter(p => {
+                const recordEmpId = typeof p.employeeId === 'object' 
+                    ? (p.employeeId._id || p.employeeId.id) 
+                    : p.employeeId;
+                return recordEmpId === employeeId || recordEmpId === user.id;
+            })
             .sort((a,b) => b.year - a.year || b.month - a.month);
-    }, [payrollRecords, user.id]);
+    }, [payrollRecords, employeeId, user.id]);
 
     const [isPayslipOpen, setIsPayslipOpen] = useState(false);
     const [selectedPayslip, setSelectedPayslip] = useState<PayrollRecord | null>(null);
-    const employee = employees.find(e => e.id === user.id) || null;
 
     const openPayslip = (record: PayrollRecord) => {
         setSelectedPayslip(record);
@@ -210,8 +227,8 @@ const EmployeePayrollView: React.FC<PayrollPageProps> = ({ user, payrollRecords,
 }
 
 const ManagerPayrollView: React.FC<PayrollPageProps> = ({ user, payrollRecords, employees, departments }) => {
-    const [monthFilter, setMonthFilter] = useState<number>(new Date().getMonth() - 1 < 0 ? 11 : new Date().getMonth() - 1);
-    const [yearFilter, setYearFilter] = useState<number>(new Date().getMonth() - 1 < 0 ? currentYear - 1 : currentYear);
+    const [monthFilter, setMonthFilter] = useState<number>(9); // October (0-indexed)
+    const [yearFilter, setYearFilter] = useState<number>(2025);
 
     const teamMembers = useMemo(() => {
         const managedDeptIds = departments.filter(d => d.managerId === user.id).map(d => d.id);
@@ -247,11 +264,29 @@ const ManagerPayrollView: React.FC<PayrollPageProps> = ({ user, payrollRecords, 
                         <TableRow><TableHead>Employee</TableHead><TableHead>Net Pay</TableHead><TableHead>Status</TableHead></TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredPayroll.length > 0 ? filteredPayroll.map(record => {
-                             const employee = employees.find(e => e.id === record.employeeId);
+                        {filteredPayroll.length > 0 ? filteredPayroll
+                          .filter(record => {
+                            // CRITICAL FIX: Filter out records for non-existent employees
+                            const employeeId = typeof record.employeeId === 'string' 
+                              ? record.employeeId 
+                              : (record.employeeId as any)?._id || (record.employeeId as any)?.id || record.employeeId;
+                            const employee = employees.find(e => e.id === employeeId || (e as any)._id === employeeId);
+                            return employee !== undefined;
+                          })
+                          .map(record => {
+                             const employeeId = typeof record.employeeId === 'string' 
+                               ? record.employeeId 
+                               : (record.employeeId as any)?._id || (record.employeeId as any)?.id || record.employeeId;
+                             const employee = employees.find(e => e.id === employeeId || (e as any)._id === employeeId)!;
+                             
                              return (
                                 <TableRow key={record.id}>
-                                    <TableCell className="font-medium">{employee?.name || 'Unknown'}</TableCell>
+                                    <TableCell className="font-medium">
+                                      <div className="flex items-center space-x-2">
+                                        <img src={employee.avatarUrl} alt={employee.name} className="h-8 w-8 rounded-full" />
+                                        <span>{employee.name}</span>
+                                      </div>
+                                    </TableCell>
                                     <TableCell className="font-semibold">${record.netPay.toFixed(2)}</TableCell>
                                     <TableCell><StatusBadge status={record.status} /></TableCell>
                                 </TableRow>
@@ -268,8 +303,8 @@ const ManagerPayrollView: React.FC<PayrollPageProps> = ({ user, payrollRecords, 
 
 const HrAdminPayrollView: React.FC<PayrollPageProps> = ({ payrollRecords, setPayrollRecords, employees, departments, attendanceRecords }) => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [monthFilter, setMonthFilter] = useState<number>(new Date().getMonth() - 1 < 0 ? 11 : new Date().getMonth() - 1);
-  const [yearFilter, setYearFilter] = useState<number>(new Date().getMonth() - 1 < 0 ? currentYear - 1 : currentYear);
+  const [monthFilter, setMonthFilter] = useState<number>(9); // October (0-indexed)
+  const [yearFilter, setYearFilter] = useState<number>(2025);
   const [isPayslipOpen, setIsPayslipOpen] = useState(false);
   const [selectedPayslip, setSelectedPayslip] = useState<PayrollRecord | null>(null);
   const { addToast } = useToast();
@@ -393,24 +428,45 @@ const HrAdminPayrollView: React.FC<PayrollPageProps> = ({ payrollRecords, setPay
                  <Table>
                     <TableHeader><TableRow><TableHead>Employee</TableHead><TableHead>Gross Pay</TableHead><TableHead>Net Pay</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                     <TableBody>
-                        {filteredPayroll.length > 0 ? filteredPayroll.map(record => {
-                        const employee = employees.find(e => e.id === record.employeeId);
-                        return (
-                            <TableRow key={record.id}>
-                                <TableCell className="font-medium">{employee?.name || 'Unknown'}</TableCell>
-                                <TableCell>${record.grossPay.toFixed(2)}</TableCell>
-                                <TableCell className="font-semibold">${record.netPay.toFixed(2)}</TableCell>
-                                <TableCell><StatusBadge status={record.status} /></TableCell>
-                                <TableCell>
-                                    <div className="flex space-x-2">
-                                    <Button variant="outline" size="sm" onClick={() => openPayslip(record)}>View Payslip</Button>
-                                    {record.status !== PayrollStatus.Paid && (<Button size="sm" onClick={() => handleMarkAsPaid(record.id)}>Mark as Paid</Button>)}
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        );
+                        {filteredPayroll.length > 0 ? filteredPayroll
+                          .filter(record => {
+                            // CRITICAL FIX: Filter out records for non-existent employees
+                            const employeeId = typeof record.employeeId === 'string' 
+                              ? record.employeeId 
+                              : (record.employeeId as any)?._id || (record.employeeId as any)?.id || record.employeeId;
+                            const employee = employees.find(e => e.id === employeeId || (e as any)._id === employeeId);
+                            return employee !== undefined;
+                          })
+                          .map(record => {
+                            const employeeId = typeof record.employeeId === 'string' 
+                              ? record.employeeId 
+                              : (record.employeeId as any)?._id || (record.employeeId as any)?.id || record.employeeId;
+                            const employee = employees.find(e => e.id === employeeId || (e as any)._id === employeeId)!;
+                            
+                            return (
+                                <TableRow key={record.id}>
+                                    <TableCell className="font-medium">
+                                      <div className="flex items-center space-x-3">
+                                        <img src={employee.avatarUrl} alt={employee.name} className="h-10 w-10 rounded-full" />
+                                        <div>
+                                          <div className="font-medium">{employee.name}</div>
+                                          <div className="text-xs text-muted-foreground">{employee.role}</div>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>${record.grossPay.toFixed(2)}</TableCell>
+                                    <TableCell className="font-semibold">${record.netPay.toFixed(2)}</TableCell>
+                                    <TableCell><StatusBadge status={record.status} /></TableCell>
+                                    <TableCell>
+                                        <div className="flex space-x-2">
+                                        <Button variant="outline" size="sm" onClick={() => openPayslip(record)}>View Payslip</Button>
+                                        {record.status !== PayrollStatus.Paid && (<Button size="sm" onClick={() => handleMarkAsPaid(record.id)}>Mark as Paid</Button>)}
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            );
                         }) : (
-                            <TableRow><TableCell colSpan={6} className="text-center h-24">No payroll data for {months[monthFilter]} {yearFilter}.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={5} className="text-center h-24">No payroll data for {months[monthFilter]} {yearFilter}.</TableCell></TableRow>
                         )}
                     </TableBody>
                  </Table>
@@ -437,7 +493,12 @@ const HrAdminPayrollView: React.FC<PayrollPageProps> = ({ payrollRecords, setPay
         isOpen={isPayslipOpen} 
         onClose={() => setIsPayslipOpen(false)} 
         payslip={selectedPayslip} 
-        employee={employees.find(e => e.id === selectedPayslip?.employeeId) || null} 
+        employee={selectedPayslip ? employees.find(e => {
+          const payslipEmpId = typeof selectedPayslip.employeeId === 'object' 
+            ? (selectedPayslip.employeeId._id || selectedPayslip.employeeId.id) 
+            : selectedPayslip.employeeId;
+          return e.id === payslipEmpId || (e as any)._id === payslipEmpId;
+        }) || null : null} 
         departments={departments}
       />
       {isConfirmGenerateOpen && payrollSummary && (

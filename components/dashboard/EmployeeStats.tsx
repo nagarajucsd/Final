@@ -19,15 +19,11 @@ const EmployeeStats: React.FC<EmployeeStatsProps> = ({ attendanceRecords, leaveB
     const presentDays = monthlyRecords.filter(r => r.status === AttendanceStatus.Present).length;
     const absentDays = monthlyRecords.filter(r => r.status === AttendanceStatus.Absent).length;
     const onLeaveDays = monthlyRecords.filter(r => r.status === AttendanceStatus.Leave).length;
-    
-    const annualLeave = leaveBalances.find(b => b.type === LeaveType.Annual);
-    const remainingAnnual = annualLeave ? annualLeave.total - annualLeave.used - annualLeave.pending : 0;
 
     const stats = [
         { label: 'Present This Month', value: presentDays, color: 'text-success' },
         { label: 'Absent This Month', value: absentDays, color: 'text-destructive' },
         { label: 'On Leave This Month', value: onLeaveDays, color: 'text-blue-500' },
-        { label: 'Annual Leave Left', value: `${remainingAnnual} days`, color: 'text-foreground' },
     ];
     
     return (

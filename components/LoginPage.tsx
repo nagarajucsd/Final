@@ -4,6 +4,7 @@ import Button from './common/Button';
 import Card from './common/Card';
 import Input from './common/Input';
 import Label from './common/Label';
+import Icon from './common/Icon';
 import { authService } from '../services/authService';
 
 interface LoginPageProps {
@@ -12,8 +13,9 @@ interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin, users }) => {
-    const [email, setEmail] = useState('admin@hrms.com');
-    const [password, setPassword] = useState('password123');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -83,34 +85,34 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, users }) => {
                         
                         <div className="space-y-2">
                             <Label htmlFor="password">Password</Label>
-                            <Input
-                                type="password"
-                                id="password"
-                                icon="lock"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                required
-                                disabled={isLoading}
-                            />
+                            <div className="relative">
+                                <Input
+                                    type={showPassword ? "text" : "password"}
+                                    id="password"
+                                    icon="lock"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    required
+                                    disabled={isLoading}
+                                    className="pr-12"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors"
+                                    title={showPassword ? "Hide password" : "Show password"}
+                                    disabled={isLoading}
+                                >
+                                    <Icon name={showPassword ? "eye-off" : "eye"} className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
                         
                         <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
                             {isLoading ? 'Signing In...' : 'Sign In'}
                         </Button>
                     </form>
-                </Card>
-                 <Card className="text-sm text-muted-foreground" bodyClassName="p-4">
-                    <h4 className="font-semibold text-foreground mb-2">Demo Emails:</h4>
-                    <div className="grid grid-cols-2 gap-2 mt-1">
-                        {users.map(user => (
-                          <button key={user.email} onClick={() => { setEmail(user.email); setPassword('password123'); }} className="text-primary hover:underline text-left truncate">
-                            {user.email}
-                          </button>
-                        ))}
-                    </div>
-                     <p className="mt-3 text-center text-xs">Password for demo accounts is: <strong className="font-mono">password123</strong></p>
-                     <p className="mt-1 text-center text-xs">New employees have a default password of: <strong className="font-mono">password</strong></p>
                 </Card>
             </div>
         </div>

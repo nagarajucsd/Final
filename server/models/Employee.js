@@ -53,6 +53,10 @@ const employeeSchema = new mongoose.Schema({
   salary: {
     type: Number,
     required: true
+  },
+  currentPassword: {
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true,

@@ -219,8 +219,8 @@ export const mockPayroll: PayrollRecord[] = mockEmployees.filter(e => e.status =
 
 
 export const mockNotifications: Notification[] = [
-    { id: 'notif001', title: 'New Company Policy', message: 'A new work-from-home policy has been published.', timestamp: new Date(Date.now() - 2 * 3600000).toISOString(), read: false },
-    { id: 'notif002', title: 'Leave Request Approved', message: 'Your annual leave has been approved.', timestamp: new Date(Date.now() - 22 * 3600000).toISOString(), read: false, link: 'My Leaves' },
-    { id: 'notif003', title: 'Payroll Generated', message: `Your payslip for ${lastMonthDate.toLocaleString('default', { month: 'long' })} has been generated.`, timestamp: new Date(Date.now() - 2 * 86400000).toISOString(), read: true, link: 'Payroll' },
-    { id: 'notif004', title: 'Upcoming Holiday', message: 'The office will be closed on 2025-12-25 for Christmas Day.', timestamp: new Date(Date.now() - 5 * 86400000).toISOString(), read: true },
+    { id: 'notif001', userId: 'user1', title: 'New Company Policy', message: 'A new work-from-home policy has been published.', timestamp: new Date(Date.now() - 2 * 3600000).toISOString(), read: false },
+    { id: 'notif002', userId: 'user1', title: 'Leave Request Approved', message: 'Your annual leave has been approved.', timestamp: new Date(Date.now() - 22 * 3600000).toISOString(), read: false, link: 'My Leaves' },
+    { id: 'notif003', userId: 'user1', title: 'Payroll Generated', message: `Your payslip for ${lastMonthDate.toLocaleString('default', { month: 'long' })} has been generated.`, timestamp: new Date(Date.now() - 2 * 86400000).toISOString(), read: true, link: 'Payroll' },
+    { id: 'notif004', userId: 'user1', title: 'Upcoming Holiday', message: 'The office will be closed on 2025-12-25 for Christmas Day.', timestamp: new Date(Date.now() - 5 * 86400000).toISOString(), read: true },
 ];

@@ -15,9 +15,11 @@ interface TasksPageProps {
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   employees: Employee[];
   departments: Department[];
+  users: User[];
+  onTaskNotification?: (notification: { userId?: string; userIds?: string[]; title: string; message: string; link?: string }) => Promise<void>;
 }
 
-const TasksPage: React.FC<TasksPageProps> = ({ user, tasks, setTasks, employees, departments }) => {
+const TasksPage: React.FC<TasksPageProps> = ({ user, tasks, setTasks, employees, departments, users, onTaskNotification }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -87,6 +89,19 @@ const TasksPage: React.FC<TasksPageProps> = ({ user, tasks, setTasks, employees,
         
         setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
         addToast({ type: 'success', message: 'Task updated successfully!' });
+        
+        // Send notification if task was reassigned to a different person
+        if (onTaskNotification && editingTask.assignedTo !== assignedTo) {
+          const assignedEmployee = employees.find(e => e.id === assignedTo);
+          if (assignedEmployee) {
+            await onTaskNotification({
+              userId: assignedTo,
+              title: 'Task Reassigned',
+              message: `Task "${title}" has been reassigned to you`,
+              link: 'Tasks'
+            });
+          }
+        }
       } else {
         // Create new task
         const newTask = await taskService.createTask({
@@ -102,6 +117,19 @@ const TasksPage: React.FC<TasksPageProps> = ({ user, tasks, setTasks, employees,
         
         setTasks(prev => [newTask, ...prev]);
         addToast({ type: 'success', message: 'Task created successfully!' });
+        
+        // Send notification to assigned employee
+        if (onTaskNotification) {
+          const assignedEmployee = employees.find(e => e.id === assignedTo);
+          if (assignedEmployee) {
+            await onTaskNotification({
+              userId: assignedTo,
+              title: 'New Task Assigned',
+              message: `You have been assigned a new task: "${title}"`,
+              link: 'Tasks'
+            });
+          }
+        }
       }
       
       resetForm();
@@ -143,9 +171,47 @@ const TasksPage: React.FC<TasksPageProps> = ({ user, tasks, setTasks, employees,
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
     try {
       setIsLoading(true);
+      const task = tasks.find(t => t.id === taskId);
       const updated = await taskService.updateTask(taskId, { status: newStatus });
       setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
       addToast({ type: 'success', message: 'Task status updated!' });
+      
+      // Send notifications based on status change
+      if (onTaskNotification && task) {
+        // Get all HR, Manager, and Admin users (excluding current user)
+        const managementUsers = users.filter(u => 
+          (u.role === UserRole.HR || u.role === UserRole.Manager || u.role === UserRole.Admin) && 
+          u.id !== user.id
+        );
+        
+        const managementUserIds = managementUsers.map(u => u.id);
+        
+        // Notify management when task is marked as done
+        if (newStatus === TaskStatus.Done && managementUserIds.length > 0) {
+          const assignedEmployee = employees.find(e => e.id === task.assignedTo);
+          const employeeName = assignedEmployee?.name || user.name || 'An employee';
+          
+          await onTaskNotification({
+            userIds: managementUserIds,
+            title: 'Task Completed',
+            message: `${employeeName} completed: "${task.title}"`,
+            link: 'Tasks'
+          });
+        }
+        
+        // Notify management when task progress starts (To Do -> In Progress)
+        if (task.status === TaskStatus.ToDo && newStatus === TaskStatus.InProgress && managementUserIds.length > 0) {
+          const assignedEmployee = employees.find(e => e.id === task.assignedTo);
+          const employeeName = assignedEmployee?.name || user.name || 'An employee';
+          
+          await onTaskNotification({
+            userIds: managementUserIds,
+            title: 'Task In Progress',
+            message: `${employeeName} started: "${task.title}"`,
+            link: 'Tasks'
+          });
+        }
+      }
     } catch (error: any) {
       console.error('Update status error:', error);
       addToast({ type: 'error', message: error.response?.data?.message || 'Failed to update status' });

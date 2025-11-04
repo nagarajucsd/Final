@@ -36,6 +36,19 @@ router.get('/', protect, async (req, res) => {
   }
 });
 
+// @route   GET /api/leaves/balance
+// @desc    Get all leave balances
+// @access  Private
+router.get('/balance', protect, async (req, res) => {
+  try {
+    const leaveBalances = await LeaveBalance.find().populate('employeeId');
+    res.json(leaveBalances);
+  } catch (error) {
+    console.error('Get all leave balances error:', error);
+    res.status(500).json({ message: 'Server error fetching leave balances' });
+  }
+});
+
 // @route   GET /api/leaves/balance/:employeeId
 // @desc    Get leave balance for an employee
 // @access  Private
@@ -101,8 +114,27 @@ router.post('/', protect, async (req, res) => {
       }
     }
 
-    // Create notification for HR/Admin
-    // This is a simplified version - in production, you'd notify specific users
+    // Create notifications for HR, Admin, and Managers
+    const User = (await import('../models/User.js')).default;
+    const managementUsers = await User.find({ 
+      role: { $in: ['Admin', 'HR', 'Manager'] } 
+    });
+
+    // Format dates for better readability
+    const startDateFormatted = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const endDateFormatted = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const daysText = days === 1 ? '1 day' : `${days} days`;
+
+    for (const mgmtUser of managementUsers) {
+      await Notification.create({
+        userId: mgmtUser._id,
+        title: `${employeeName} requested ${leaveType} Leave`,
+        message: `${employeeName} has requested ${leaveType} leave for ${daysText} (${startDateFormatted} - ${endDateFormatted}). Reason: ${reason || 'Not specified'}`,
+        type: 'leave',
+        relatedId: leaveRequest._id,
+        link: '/leave-requests'  // Management users go to Leave Requests page
+      });
+    }
     
     const populatedLeave = await LeaveRequest.findById(leaveRequest._id).populate('employeeId');
 
@@ -147,12 +179,21 @@ router.put('/:id', protect, authorize('Admin', 'HR', 'Manager'), async (req, res
       // Send notification to employee
       const employee = await Employee.findById(leaveRequest.employeeId).populate('userId');
       if (employee && employee.userId) {
+        // Format dates for better readability
+        const startDateFormatted = leaveRequest.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const endDateFormatted = leaveRequest.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const daysText = leaveRequest.days === 1 ? '1 day' : `${leaveRequest.days} days`;
+        
+        // Get approver name
+        const approverName = req.user.name || 'Management';
+        
         await Notification.create({
           userId: employee.userId._id,
-          title: `Leave Request ${status}`,
-          message: `Your ${leaveRequest.leaveType} leave request has been ${status.toLowerCase()}`,
+          title: `${approverName} ${status} your Leave Request`,
+          message: `${approverName} has ${status.toLowerCase()} your ${leaveRequest.leaveType} leave request for ${daysText} (${startDateFormatted} - ${endDateFormatted})`,
           type: 'leave',
-          relatedId: leaveRequest._id
+          relatedId: leaveRequest._id,
+          link: '/leaves'  // Employee goes to My Leaves page (will be routed based on role)
         });
 
         // Send email notification

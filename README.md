@@ -1,421 +1,312 @@
-# 🏢 WEintegrity HR Management System
+# HR Management System
 
-A complete, modern HR Management System built with React, Node.js, Express, and MongoDB.
+A comprehensive full-stack Human Resources Management System built with modern web technologies. This system provides complete HR functionality including employee management, attendance tracking, leave management, payroll processing, and real-time notifications.
 
-![Status](https://img.shields.io/badge/status-active-success.svg)
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+## Features
 
----
+### Core Functionality
+- **User Authentication & Authorization**: JWT-based authentication with role-based access control (Admin, HR, Manager, Employee)
+- **Multi-Factor Authentication (MFA)**: TOTP-based 2FA with recovery codes and email verification
+- **Employee Management**: Complete CRUD operations for employee records with department assignments
+- **Department Management**: Organize employees into departments with manager assignments
+- **Attendance System**: 
+  - Real-time clock in/out functionality
+  - Automatic daily attendance record creation
+  - Work hours calculation and tracking
+  - Weekend and holiday handling
+- **Leave Management**: 
+  - Leave request submission and approval workflow
+  - Multiple leave types support
+  - Leave balance tracking
+- **Payroll Processing**: Automated salary calculations and payroll record management
+- **Task Management**: Assign and track tasks across teams
+- **Notifications**: Real-time notification system with badge counters
+- **Reports & Analytics**: Comprehensive reporting dashboard
+- **Exit Interviews**: Structured exit interview process
 
-## ✨ Features
-
-### 🔐 Authentication & Security
-- Multi-Factor Authentication (MFA) with TOTP
-- Email verification (demo mode available)
-- JWT token-based authentication
-- Role-based access control
+### Security Features
 - Password hashing with bcrypt
-- MFA reset functionality
+- JWT token-based authentication
+- Account lockout after failed login attempts
+- MFA with TOTP (Time-based One-Time Password)
+- Email verification for sensitive operations
+- CAPTCHA verification for authentication flows
+- Secure password reset functionality
 
-### 👥 Employee Management
-- Complete CRUD operations
-- Employee profiles with avatars
-- Department assignment
-- Salary management
-- Employment status tracking
-- Real-time data synchronization
+## Tech Stack
 
-### 📁 Department Management
-- Create and manage departments
-- Assign department managers
-- Track employee distribution
-- Real-time updates
+### Frontend
+- **React 19.2.0** - UI framework
+- **TypeScript** - Type-safe development
+- **Vite 6.2.0** - Build tool and dev server
+- **Axios** - HTTP client for API communication
 
-### 🏖️ Leave Management
-- Apply for leaves (Annual, Sick, Casual, Unpaid)
-- Approve/Reject leave requests
-- Leave balance tracking
-- Leave history
-- Business logic validation
+### Backend
+- **Node.js** - Runtime environment
+- **Express 4.18.2** - Web application framework
+- **MongoDB** - NoSQL database
+- **Mongoose 8.0.0** - MongoDB ODM
 
-### 📅 Attendance Tracking
-- Clock in/out functionality
-- Attendance calendar view
-- Work hours calculation
-- Weekly time tracking
-- Attendance reports
+### Authentication & Security
+- **jsonwebtoken 9.0.2** - JWT implementation
+- **bcryptjs 2.4.3** - Password hashing
+- **speakeasy 2.0.0** - TOTP/MFA implementation
+- **express-validator 7.0.1** - Request validation
 
-### 📊 Dashboard & Reports
-- Real-time statistics
-- Employee overview
-- Department distribution
-- Leave requests summary
-- Attendance tracking
-- Interactive charts
+### Additional Tools
+- **nodemailer 6.9.7** - Email service
+- **qrcode 1.5.3** - QR code generation for MFA
+- **multer 1.4.5** - File upload handling
+- **cors 2.8.5** - Cross-origin resource sharing
 
----
+## Prerequisites
 
-## 🚀 Quick Start
-
-### Prerequisites
 - Node.js (v18 or higher)
-- MongoDB (Community Edition)
-- npm or yarn
+- MongoDB (v6 or higher)
+- npm or yarn package manager
 
-### Installation
+## Local Setup
 
-1. **Clone the repository**
+### 1. Clone the Repository
 ```bash
 git clone <repository-url>
-cd HR_app-main
+cd complete-hr-management-system
 ```
 
-2. **Install dependencies**
+### 2. Install Dependencies
+
+Install both frontend and backend dependencies:
 ```bash
-# Backend
+npm run install:all
+```
+
+Or install separately:
+```bash
+# Frontend dependencies
+npm install
+
+# Backend dependencies
 cd server
 npm install
 cd ..
-
-# Frontend
-npm install
 ```
 
-3. **Start MongoDB**
-```bash
-net start MongoDB
-```
+### 3. Environment Configuration
 
-4. **Run the application**
-
-**Easy Way** (Windows):
-```bash
-# Double-click START_SYSTEM.bat
-```
-
-**Manual Way**:
-```bash
-# Terminal 1 - Backend
-cd server
-npm run dev
-
-# Terminal 2 - Frontend
-npm run dev
-```
-
-5. **Open browser**
-```
-http://localhost:3000
-```
-
----
-
-## 🔐 Default Login
-
-### Admin Account
-- **Email**: `admin@hrms.com`
-- **Password**: `password123`
-- **Verification Code**: `123456` (demo mode)
-
-### Other Demo Accounts
-- HR: `hr@hrms.com` / `password123`
-- Manager: `manager@hrms.com` / `password123`
-- Employee: `employee@hrms.com` / `password123`
-
----
-
-## 🛠️ Tech Stack
-
-### Frontend
-- **React 19** - UI framework
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **Axios** - HTTP client
-
-### Backend
-- **Node.js** - Runtime
-- **Express.js** - Web framework
-- **MongoDB** - Database
-- **Mongoose** - ODM
-- **JWT** - Authentication
-- **Speakeasy** - MFA/TOTP
-- **bcryptjs** - Password hashing
-
----
-
-## 📁 Project Structure
-
-```
-HR_app-main/
-├── server/                 # Backend
-│   ├── models/            # MongoDB models
-│   ├── routes/            # API routes
-│   ├── middleware/        # Authentication middleware
-│   ├── utils/             # Utility functions
-│   ├── config/            # Configuration
-│   ├── .env               # Environment variables
-│   └── server.js          # Entry point
-│
-├── src/                   # Frontend
-│   ├── components/        # React components
-│   │   ├── common/       # Reusable components
-│   │   ├── pages/        # Page components
-│   │   ├── mfa/          # MFA components
-│   │   └── layout/       # Layout components
-│   ├── services/          # API services
-│   ├── hooks/             # Custom hooks
-│   ├── data/              # Mock data
-│   └── types.ts           # TypeScript types
-│
-├── START_SYSTEM.bat       # Quick start script
-├── STOP_SYSTEM.bat        # Quick stop script
-├── SETUP_GUIDE.md         # Detailed setup guide
-└── README.md              # This file
-```
-
----
-
-## 🔧 Configuration
-
-### Backend (.env)
-```env
-NODE_ENV=development
-PORT=5000
-MONGODB_URI=mongodb://127.0.0.1:27017/hr_management_system
-JWT_SECRET=your_secret_key
-ENABLE_REAL_EMAIL=false
-```
-
-### Frontend (.env)
+#### Frontend Environment (.env)
+Create a `.env` file in the root directory:
 ```env
 VITE_API_URL=http://localhost:5000/api
 ```
 
----
-
-## 📊 API Endpoints
-
-### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/mfa/setup` - Setup MFA
-- `POST /api/auth/mfa/verify` - Verify MFA
-- `POST /api/auth/mfa/reset` - Reset MFA
-- `POST /api/auth/mfa/verify-email-code` - Email verification
-- `GET /api/auth/me` - Get current user
-
-### Departments
-- `GET /api/departments` - Get all departments
-- `POST /api/departments` - Create department
-- `PUT /api/departments/:id` - Update department
-- `DELETE /api/departments/:id` - Delete department
-
-### Employees
-- `GET /api/employees` - Get all employees
-- `POST /api/employees` - Create employee
-- `PUT /api/employees/:id` - Update employee
-- `DELETE /api/employees/:id` - Delete employee
-
-### Leaves
-- `GET /api/leaves` - Get all leaves
-- `POST /api/leaves` - Create leave request
-- `PUT /api/leaves/:id` - Update leave status
-- `DELETE /api/leaves/:id` - Delete leave
-
-### Attendance
-- `GET /api/attendance` - Get attendance records
-- `POST /api/attendance` - Create attendance record
-
----
-
-## 🧪 Testing
-
-### Run All Tests
-```bash
-node test-all-operations-final.js
-```
-
-### Test Specific Features
-```bash
-node test-update-delete.js      # Test CRUD operations
-node test-mfa-reset.js          # Test MFA reset
-node check-db.js                # Check database
-```
-
----
-
-## 🎯 Key Features
-
-### ✅ Real-time Data Synchronization
-- All CRUD operations update immediately
-- No page refresh needed
-- Data persists in MongoDB
-
-### ✅ MFA Reset Options
-- Reset via email verification (checkbox)
-- Reset via Profile page (button)
-- Generate new QR code on demand
-
-### ✅ Demo Mode
-- Email verification code: `123456`
-- No SMTP configuration needed
-- Perfect for testing and demos
-
-### ✅ Production Ready
-- Configure SMTP for real emails
-- Secure JWT authentication
-- Role-based access control
-- Input validation
-- Error handling
-
----
-
-## 📚 Documentation
-
-- **SETUP_GUIDE.md** - Complete setup instructions
-- **QUICK_START.md** - Quick start guide
-- **LOGIN_FIX_GUIDE.md** - Login troubleshooting
-- **MFA_RESET_AND_DATA_SYNC_FIX.md** - MFA reset guide
-- **EMAIL_AND_MFA_SETUP_GUIDE.md** - Email configuration
-- **FINAL_SUMMARY.md** - System overview
-
----
-
-## 🐛 Troubleshooting
-
-### MongoDB not running
-```bash
-net start MongoDB
-```
-
-### Port already in use (EADDRINUSE)
-**Quick Fix**:
-```bash
-# Stop all Node.js processes
-taskkill /F /IM node.exe /T
-
-# Then restart
-START_SYSTEM.bat
-```
-
-**Or**: The updated `START_SYSTEM.bat` now automatically stops existing processes.
-
-### Login failed
-1. Check backend is running: http://localhost:5000/api/health
-2. Verify MongoDB is running
-3. Use correct credentials
-4. Clear browser cache
-
-### Module not found
-```bash
-npm install
-cd server && npm install
-```
-
-### Multiple servers running
-```bash
-# Stop all
-taskkill /F /IM node.exe /T
-
-# Start fresh
-START_SYSTEM.bat
-```
-
----
-
-## 🔄 Development Workflow
-
-### Daily Development
-1. Start MongoDB: `net start MongoDB`
-2. Start Backend: `cd server && npm run dev`
-3. Start Frontend: `npm run dev`
-4. Code and test
-5. Stop servers: `Ctrl+C`
-
-### Making Changes
-1. Backend changes: Edit files in `server/`
-2. Frontend changes: Edit files in `src/`
-3. Auto-reload enabled for both
-4. Test changes immediately
-
----
-
-## 🎨 Customization
-
-### Change Theme
-Edit `tailwind.config.js` for colors and styling
-
-### Add New Features
-1. Backend: Add routes in `server/routes/`
-2. Frontend: Add components in `src/components/`
-3. Update types in `src/types.ts`
-
-### Configure Email
-Edit `server/.env`:
+#### Backend Environment (server/.env)
+Create a `.env` file in the `server` directory:
 ```env
-SMTP_USER=your.email@gmail.com
-SMTP_PASS=your_app_password
-ENABLE_REAL_EMAIL=true
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
+
+# Database
+MONGODB_URI=mongodb://localhost:27017/hr-management
+
+# JWT Secret
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+
+# Email Configuration (for MFA and notifications)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-app-specific-password
+EMAIL_FROM=HR System <your-email@gmail.com>
+
+# MFA Configuration
+MFA_ISSUER=HR Management System
 ```
 
----
+### 4. Database Setup
 
-## 📈 Performance
+Ensure MongoDB is running locally:
+```bash
+# Windows
+net start MongoDB
 
-- **API Response Time**: < 500ms
-- **Frontend Load Time**: < 1 second
-- **Database Queries**: Optimized with indexes
-- **Real-time Updates**: Instant synchronization
+# macOS/Linux
+sudo systemctl start mongod
+```
 
----
+Seed the database with initial data (optional):
+```bash
+cd server
+npm run seed
+```
 
-## 🔒 Security
+### 5. Run the Application
 
-- ✅ Password hashing (bcrypt)
-- ✅ JWT authentication
-- ✅ MFA protection
-- ✅ Protected API routes
-- ✅ Input validation
-- ✅ CORS configuration
-- ✅ SQL injection prevention
-- ✅ XSS protection
+#### Development Mode (Both Frontend & Backend)
+```bash
+npm run dev:fullstack
+```
 
----
+#### Run Separately
 
-## 🤝 Contributing
+Frontend (runs on http://localhost:5173):
+```bash
+npm run dev
+```
 
-1. Fork the repository
-2. Create feature branch
-3. Commit changes
-4. Push to branch
-5. Create Pull Request
+Backend (runs on http://localhost:5000):
+```bash
+npm run server:dev
+```
 
----
+### 6. Access the Application
 
-## 📝 License
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:5000/api
+- Health Check: http://localhost:5000/api/health
 
-This project is licensed under the MIT License.
+## Build Commands
 
----
+### Production Build
 
-## 👥 Support
+Build the frontend for production:
+```bash
+npm run build
+```
+
+The build output will be in the `dist` directory.
+
+### Preview Production Build
+```bash
+npm run preview
+```
+
+## Production Deployment
+
+### Frontend Deployment
+
+1. Build the application:
+```bash
+npm run build
+```
+
+2. Deploy the `dist` folder to your hosting service (Vercel, Netlify, AWS S3, etc.)
+
+3. Update environment variables on your hosting platform:
+```env
+VITE_API_URL=https://your-api-domain.com/api
+```
+
+### Backend Deployment
+
+1. Ensure all dependencies are installed:
+```bash
+cd server
+npm install --production
+```
+
+2. Set production environment variables on your server
+
+3. Start the server:
+```bash
+npm start
+```
+
+For production servers, use a process manager like PM2:
+```bash
+npm install -g pm2
+pm2 start server.js --name hr-api
+pm2 save
+pm2 startup
+```
+
+### Database Deployment
+
+For production, use a managed MongoDB service:
+- MongoDB Atlas (recommended)
+- AWS DocumentDB
+- Azure Cosmos DB
+
+Update `MONGODB_URI` in your production environment variables.
+
+## Default Credentials
+
+After seeding the database, use these credentials:
+
+**Admin Account:**
+- Email: admin@company.com
+- Password: admin123
+
+**HR Account:**
+- Email: hr@company.com
+- Password: hr123
+
+**Manager Account:**
+- Email: manager@company.com
+- Password: manager123
+
+**Employee Account:**
+- Email: employee@company.com
+- Password: employee123
+
+> **Important**: Change these credentials immediately after first login in production.
+
+## Project Structure
+
+```
+complete-hr-management-system/
+├── client/                 # Frontend source files (if separated)
+├── components/            # React components
+│   ├── auth/             # Authentication components
+│   ├── dashboard/        # Dashboard components
+│   ├── layout/           # Layout components (Sidebar, Topbar)
+│   ├── leave/            # Leave management components
+│   ├── mfa/              # MFA components
+│   └── pages/            # Page components
+├── server/               # Backend application
+│   ├── config/          # Configuration files
+│   ├── jobs/            # Scheduled jobs (attendance automation)
+│   ├── middleware/      # Express middleware
+│   ├── models/          # Mongoose models
+│   ├── routes/          # API routes
+│   ├── scripts/         # Utility scripts
+│   └── utils/           # Helper functions
+├── services/            # Frontend services
+├── utils/               # Frontend utilities
+├── docs/                # Documentation
+├── .env                 # Frontend environment variables
+├── server/.env          # Backend environment variables
+└── package.json         # Project dependencies
+```
+
+## API Documentation
+
+See [docs/API_REFERENCE.md](docs/API_REFERENCE.md) for complete API documentation.
+
+## Troubleshooting
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues and solutions.
+
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed system architecture.
+
+## Database Schema
+
+See [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md) for database structure and relationships.
+
+## Deployment Guide
+
+See [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) for step-by-step deployment instructions.
+
+## Support
 
 For issues and questions:
-- Check documentation files
-- Review troubleshooting section
-- Test with provided scripts
+1. Check the troubleshooting guide
+2. Review the API documentation
+3. Check application logs for error details
 
----
+## License
 
-## 🎉 Acknowledgments
-
-Built with modern web technologies and best practices.
-
----
-
-**Ready to start?** Run `START_SYSTEM.bat` or follow the [Setup Guide](SETUP_GUIDE.md)!
-
-**Need help?** Check the [Troubleshooting Guide](SETUP_GUIDE.md#troubleshooting)!
-
-**Happy coding!** 🚀
+Proprietary - All rights reserved

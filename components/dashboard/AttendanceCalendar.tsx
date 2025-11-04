@@ -12,10 +12,40 @@ interface AttendanceCalendarProps {
 }
 
 const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ records }) => {
+  // Always start with current month/year
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+  
+  // Debug logging
+  React.useEffect(() => {
+    console.log('📅 AttendanceCalendar Debug:');
+    console.log('   Total records received:', records.length);
+    console.log('   Current month:', months[month], '(index:', month, ')');
+    console.log('   Current year:', year);
+    
+    // Show sample of records
+    if (records.length > 0) {
+      console.log('   Sample records:', records.slice(0, 3).map(r => ({
+        date: r.date,
+        status: r.status,
+        employeeId: typeof r.employeeId === 'object' ? r.employeeId._id : r.employeeId
+      })));
+    }
+    
+    // Filter records for current month/year
+    const thisMonthRecords = records.filter(r => {
+      const recordDate = r.date.includes('T') ? r.date.split('T')[0] : r.date;
+      const [recordYear, recordMonth] = recordDate.split('-').map(Number);
+      return recordMonth === (month + 1) && recordYear === year;
+    });
+    
+    console.log('   Records for', months[month], year, ':', thisMonthRecords.length);
+    if (thisMonthRecords.length > 0) {
+      console.log('   Sample:', thisMonthRecords.slice(0, 3).map(r => `${r.date}: ${r.status}`));
+    }
+  }, [records, month, year]);
 
   const firstDayOfMonth = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -29,8 +59,21 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ records }) => {
   };
   
   const getStatusForDay = (day: number): AttendanceStatus | undefined => {
-    const dateString = new Date(year, month, day).toISOString().split('T')[0];
-    const record = records.find(r => r.date === dateString);
+    // Create date string in YYYY-MM-DD format
+    const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    
+    // Find matching record
+    const record = records.find(r => {
+      // Handle both date formats
+      const recordDate = r.date.includes('T') ? r.date.split('T')[0] : r.date;
+      return recordDate === dateString;
+    });
+    
+    // Debug log for first few days
+    if (day <= 3) {
+      console.log(`   Day ${day} (${dateString}):`, record ? `${record.status}` : 'No record');
+    }
+    
     return record?.status;
   };
 
@@ -93,7 +136,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ records }) => {
   return (
     <Card title="Attendance Overview" bodyClassName="p-4" className="h-full">
       <div className="flex justify-between items-center mb-4 px-2">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center flex-1">
           <Select value={month} onChange={handleMonthChange} className="h-9 text-sm">
             {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
           </Select>
