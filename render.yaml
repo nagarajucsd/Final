@@ -1,9 +1,10 @@
 services:
   # Backend API Service
+  # IMPORTANT: Update the values below with your actual deployment details
   - type: web
-    name: hr-management-backend
+    name: your-company-hr-backend  # Change this to your preferred service name
     env: node
-    region: oregon
+    region: oregon  # Choose your preferred region (oregon, frankfurt, singapore, etc.)
     plan: free
     buildCommand: cd server && npm install
     startCommand: cd server && npm start
@@ -13,29 +14,13 @@ services:
       - key: PORT
         value: 5000
       - key: FRONTEND_URL
-        value: https://hrapp.onrender.com
+        value: https://your-frontend-app.vercel.app  # Update with your Vercel URL
       - key: MONGODB_URI
-        value: mongodb+srv://hr_admin:hrpassword123@cluster0.w5ypk0z.mongodb.net/hr-management?retryWrites=true&w=majority&appName=Cluster0
+        value: mongodb+srv://your_username:your_password@your_cluster.mongodb.net/your_database?retryWrites=true&w=majority  # Update with your MongoDB connection string
       - key: JWT_SECRET
-        generateValue: true
+        generateValue: true  # Render will auto-generate a secure secret
       - key: JWT_EXPIRE
         value: 30d
       - key: MFA_ISSUER
-        value: HR Management System
+        value: Your Company HR System  # Update with your company name
     healthCheckPath: /api/health
-
-  # Frontend Service
-  - type: web
-    name: hr-management-frontend
-    env: static
-    region: oregon
-    plan: free
-    buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
-    envVars:
-      - key: VITE_API_URL
-        value: https://hr-management-backend.onrender.com/api
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html

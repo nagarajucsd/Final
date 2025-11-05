@@ -184,51 +184,29 @@ npm run preview
 
 ## Production Deployment
 
-### Frontend Deployment
+For detailed deployment instructions for your company, see:
+- **[DEPLOYMENT_GUIDE_FOR_NEW_COMPANY.md](DEPLOYMENT_GUIDE_FOR_NEW_COMPANY.md)** - Complete guide for deploying to Vercel + Render
+- **[docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)** - General deployment documentation
 
-1. Build the application:
-```bash
-npm run build
-```
+### Quick Deployment Summary
 
-2. Deploy the `dist` folder to your hosting service (Vercel, Netlify, AWS S3, etc.)
+**What You Need:**
+- MongoDB Atlas account (database)
+- Render account (backend hosting)
+- Vercel account (frontend hosting)
 
-3. Update environment variables on your hosting platform:
-```env
-VITE_API_URL=https://your-api-domain.com/api
-```
+**Configuration Files to Update:**
+1. `server/.env.production` - Backend environment variables
+2. `.env.production` - Frontend environment variables
+3. `render.yaml` - Render deployment configuration
 
-### Backend Deployment
+**Key Changes Required:**
+- Update `MONGODB_URI` with your MongoDB connection string
+- Update `FRONTEND_URL` with your Vercel URL
+- Update `VITE_API_URL` with your Render backend URL
+- Change `MFA_ISSUER` to your company name
 
-1. Ensure all dependencies are installed:
-```bash
-cd server
-npm install --production
-```
-
-2. Set production environment variables on your server
-
-3. Start the server:
-```bash
-npm start
-```
-
-For production servers, use a process manager like PM2:
-```bash
-npm install -g pm2
-pm2 start server.js --name hr-api
-pm2 save
-pm2 startup
-```
-
-### Database Deployment
-
-For production, use a managed MongoDB service:
-- MongoDB Atlas (recommended)
-- AWS DocumentDB
-- Azure Cosmos DB
-
-Update `MONGODB_URI` in your production environment variables.
+See **DEPLOYMENT_GUIDE_FOR_NEW_COMPANY.md** for step-by-step instructions.
 
 ## Default Credentials
 
@@ -286,7 +264,7 @@ See [docs/API_REFERENCE.md](docs/API_REFERENCE.md) for complete API documentatio
 
 ## Troubleshooting
 
-See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues and solutions.
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common deployment and runtime issues.
 
 ## Architecture
 
