@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR App - Connection Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #ff6b35;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #ff6b35;
+            border-radius: 5px;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.success {
+            background: #4caf50;
+            color: white;
+        }
+        .status.error {
+            background: #f44336;
+            color: white;
+        }
+        .status.pending {
+            background: #ff9800;
+            color: white;
+        }
+        button {
+            background: #ff6b35;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #e55a2b;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #2196f3;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        label {
+            font-weight: bold;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 HR App - Connection Diagnostic Tool</h1>
+        
+        <div class="info">
+            <strong>📋 Instructions:</strong><br>
+            1. Enter your backend URL below<br>
+            2. Click "Test Connection" to verify backend is reachable<br>
+            3. Try a test login with your credentials<br>
+            4. Check the results for any errors
+        </div>
+
+        <div class="test-section">
+            <h3>⚙️ Configuration</h3>
+            <label for="backendUrl">Backend URL:</label>
+            <input type="text" id="backendUrl" placeholder="https://your-backend.onrender.com/api" value="https://hr-management-backend.onrender.com/api">
+        </div>
+
+        <div class="test-section">
+            <h3>1. Backend Health Check <span id="healthStatus" class="status pending">Not Tested</span></h3>
+            <button onclick="testHealth()">Test Connection</button>
+            <div id="healthResult" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Login Test <span id="loginStatus" class="status pending">Not Tested</span></h3>
+            <label for="email">Email:</label>
+            <input type="email" id="email" placeholder="admin@company.com" value="admin@company.com">
+            
+            <label for="password">Password:</label>
+            <input type="password" id="password" placeholder="password" value="password">
+            
+            <button onclick="testLogin()">Test Login</button>
+            <div id="loginResult" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Browser Information</h3>
+            <div class="result">
+Current URL: <span id="currentUrl"></span>
+User Agent: <span id="userAgent"></span>
+Cookies Enabled: <span id="cookiesEnabled"></span>
+Local Storage: <span id="localStorageEnabled"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Display browser info
+        document.getElementById('currentUrl').textContent = window.location.href;
+        document.getElementById('userAgent').textContent = navigator.userAgent;
+        document.getElementById('cookiesEnabled').textContent = navigator.cookieEnabled ? '✅ Yes' : '❌ No';
+        
+        try {
+            localStorage.setItem('test', 'test');
+            localStorage.removeItem('test');
+            document.getElementById('localStorageEnabled').textContent = '✅ Yes';
+        } catch (e) {
+            document.getElementById('localStorageEnabled').textContent = '❌ No';
+        }
+
+        async function testHealth() {
+            const backendUrl = document.getElementById('backendUrl').value.trim();
+            const statusEl = document.getElementById('healthStatus');
+            const resultEl = document.getElementById('healthResult');
+            
+            if (!backendUrl) {
+                alert('Please enter backend URL');
+                return;
+            }
+
+            statusEl.className = 'status pending';
+            statusEl.textContent = 'Testing...';
+            resultEl.style.display = 'block';
+            resultEl.textContent = 'Connecting to backend...';
+
+            try {
+                const healthUrl = backendUrl.replace('/api', '') + '/api/health';
+                console.log('Testing health endpoint:', healthUrl);
+                
+                const response = await fetch(healthUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'ok') {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = '✅ Connected';
+                    resultEl.textContent = `Success!\n\nStatus: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = '❌ Failed';
+                    resultEl.textContent = `Error!\n\nStatus: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '❌ Failed';
+                resultEl.textContent = `Connection Error!\n\nError: ${error.message}\n\nPossible causes:\n1. Backend is not running\n2. Backend URL is incorrect\n3. CORS is blocking the request\n4. Network connectivity issue`;
+                console.error('Health check error:', error);
+            }
+        }
+
+        async function testLogin() {
+            const backendUrl = document.getElementById('backendUrl').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const statusEl = document.getElementById('loginStatus');
+            const resultEl = document.getElementById('loginResult');
+            
+            if (!backendUrl || !email || !password) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            statusEl.className = 'status pending';
+            statusEl.textContent = 'Testing...';
+            resultEl.style.display = 'block';
+            resultEl.textContent = 'Attempting login...';
+
+            try {
+                const loginUrl = backendUrl + '/auth/login';
+                console.log('Testing login endpoint:', loginUrl);
+                
+                const response = await fetch(loginUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = '✅ Success';
+                    resultEl.textContent = `Login Successful!\n\nStatus: ${response.status}\nUser: ${data.user?.name || 'Unknown'}\nEmail: ${data.user?.email || 'Unknown'}\nRole: ${data.user?.role || 'Unknown'}\nMFA Setup: ${data.user?.isMfaSetup ? 'Yes' : 'No'}\n\nFull Response:\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = '❌ Failed';
+                    resultEl.textContent = `Login Failed!\n\nStatus: ${response.status}\nMessage: ${data.message || 'Unknown error'}\n\nFull Response:\n${JSON.stringify(data, null, 2)}\n\nPossible causes:\n1. Invalid credentials\n2. User doesn't exist in database\n3. Account is locked or inactive`;
+                }
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '❌ Failed';
+                resultEl.textContent = `Connection Error!\n\nError: ${error.message}\n\nPossible causes:\n1. Backend is not running\n2. Backend URL is incorrect\n3. CORS is blocking the request\n4. Network connectivity issue`;
+                console.error('Login test error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -43,7 +43,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, users }) => {
             console.error('❌ Login failed:', error);
             console.error('❌ Error response:', error.response);
             console.error('❌ Error data:', error.response?.data);
-            setError(error.response?.data?.message || 'Login failed. Please try again.');
+            console.error('❌ API Base URL:', import.meta.env.VITE_API_URL || 'http://localhost:5000/api');
+            
+            // Better error messages
+            if (error.message === 'Network Error' || !error.response) {
+                setError('Cannot connect to server. Please check if backend is running.');
+            } else if (error.response?.status === 401) {
+                setError('Invalid email or password. Please try again.');
+            } else if (error.response?.status === 500) {
+                setError('Server error. Please try again later or contact support.');
+            } else {
+                setError(error.response?.data?.message || 'Login failed. Please try again.');
+            }
         } finally {
             setIsLoading(false);
         }

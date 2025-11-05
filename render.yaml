@@ -34,7 +34,7 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        value: https://hr-management-backend.onrender.com
+        value: https://hr-management-backend.onrender.com/api
     routes:
       - type: rewrite
         source: /*

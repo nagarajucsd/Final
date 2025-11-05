@@ -28,15 +28,31 @@ connectDB();
 
 const app = express();
 
-// Middleware
+// Middleware - CORS Configuration
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:3001',
+  'http://localhost:3000',
+  'https://hrapp.onrender.com',
+  'https://hr-management-frontend.onrender.com'
+].filter(Boolean); // Remove undefined values
+
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:5173',
-    'http://localhost:3001',
-    'http://localhost:3000',
-    'https://hrapp.onrender.com'
-  ],
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      console.log('❌ CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -69,8 +85,15 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('🚀 HR Management Backend Server Started');
+  console.log('═══════════════════════════════════════════════════════');
+  console.log(`📍 Port: ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL}`);
+  console.log(`🗄️  Database: ${process.env.MONGODB_URI ? 'Connected' : 'Not configured'}`);
+  console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? 'Configured' : '⚠️  NOT SET'}`);
+  console.log('═══════════════════════════════════════════════════════');
   
   // Start daily attendance job scheduler
   scheduleDailyAttendanceJob();
