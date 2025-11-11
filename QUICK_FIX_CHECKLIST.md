@@ -18,13 +18,13 @@ Add these variables:
 NODE_ENV = production
 PORT = 5000
 FRONTEND_URL = https://hr-pkwyq9egs-naveens-projects-7e7c32cb.vercel.app
-MONGODB_URI = mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@YOUR_CLUSTER.mongodb.net/hr_management?retryWrites=true&w=majority
+MONGODB_URI = mongodb+srv://Naveen:Naveenroy@hrbackend.bmeyguz.mongodb.net/hrbackend?retryWrites=true&w=majority&appName=hrbackend
 JWT_SECRET = (click "Generate" or leave blank for auto-generate)
 JWT_EXPIRE = 30d
 MFA_ISSUER = HR Management System
 ```
 
-**⚠️ CRITICAL**: Replace `YOUR_USERNAME`, `YOUR_PASSWORD`, and `YOUR_CLUSTER` with your actual MongoDB Atlas credentials!
+**✅ MongoDB URL is already configured above - just copy and paste!**
 
 ---
 

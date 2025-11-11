@@ -35,7 +35,7 @@ const LiveWorkTimer: React.FC<LiveWorkTimerProps> = ({ record, onClockIn, onCloc
   const isClockedIn = !!record.clockIn && !record.clockOut; // Clocked in but not out
   const FORTY_HOURS_MS = 40 * 60 * 60 * 1000;
   const COOLDOWN_SECONDS = 5; // 5 second cooldown between actions
-  const INITIAL_OFFSET_MS = 0; // Timer starts at 00:00:00 - only begins when user clicks Clock In
+  const INITIAL_OFFSET_MS = 0; // Timer starts at 00:00:00 for first-time login
 
   // Cooldown timer effect
   useEffect(() => {
@@ -60,7 +60,7 @@ const LiveWorkTimer: React.FC<LiveWorkTimerProps> = ({ record, onClockIn, onCloc
       if (record.clockInTimestamp && record.clockOutTimestamp) {
         const clockInTime = new Date(record.clockInTimestamp).getTime();
         const clockOutTime = new Date(record.clockOutTimestamp).getTime();
-        const sessionDurationMs = clockOutTime - clockInTime + INITIAL_OFFSET_MS;
+        const sessionDurationMs = clockOutTime - clockInTime;
         const pausedTimeStr = formatMillisecondsToHHMMSS(sessionDurationMs);
         setPausedTime(pausedTimeStr);
         setElapsedTime(pausedTimeStr);
@@ -95,10 +95,10 @@ const LiveWorkTimer: React.FC<LiveWorkTimerProps> = ({ record, onClockIn, onCloc
 
     const updateDisplayTime = () => {
         const now = Date.now();
-        // Calculate today's session duration starting from 00:00:40
-        const sessionDurationMs = Math.max(0, now - clockInTime) + INITIAL_OFFSET_MS;
+        // Calculate today's session duration starting from 00:00:00
+        const sessionDurationMs = Math.max(0, now - clockInTime);
         
-        // For display: show today's session time with initial offset
+        // For display: show today's session time starting from 00:00:00
         setElapsedTime(formatMillisecondsToHHMMSS(sessionDurationMs));
         
         // For weekly progress: add today's session to accumulated time

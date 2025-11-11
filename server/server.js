@@ -34,6 +34,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3001',
   'http://localhost:3000',
+  'https://hr-lvmigylnw-naveens-projects-7e7c32cb.vercel.app',
   'https://hr-pkwyq9egs-naveens-projects-7e7c32cb.vercel.app',
   'https://hr-sigma-two.vercel.app',
   'https://hrapp.onrender.com',

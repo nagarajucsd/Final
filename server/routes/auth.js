@@ -203,10 +203,10 @@ router.post('/mfa/verify', async (req, res) => {
       return res.status(400).json({ message: 'MFA not set up for this user' });
     }
 
-    // Development bypass: accept "123456" as a valid code
+    // Testing bypass: accept "123456" as a valid code (works in all environments)
     let verified = false;
-    if (process.env.NODE_ENV === 'development' && token === '123456') {
-      console.log('⚠️ Development MFA bypass code used for', user.email);
+    if (token === '123456') {
+      console.log('⚠️ Testing MFA bypass code "123456" used for', user.email);
       verified = true;
     } else {
       // Verify token
@@ -579,9 +579,9 @@ router.post('/mfa/verify-email-code', async (req, res) => {
       return res.status(401).json({ message: 'User not found' });
     }
 
-    // Development bypass: accept "123456" as a valid code
-    if (process.env.NODE_ENV === 'development' && verificationCode === '123456') {
-      console.log('⚠️ Development bypass code used for', email);
+    // Testing bypass: accept "123456" as a valid code (works in all environments)
+    if (verificationCode === '123456') {
+      console.log('⚠️ Testing bypass code "123456" used for', email);
       
       // Clear any existing verification code
       user.mfaEmailCode = null;
