@@ -1,3 +1,5 @@
+// server/utils/seed.js
+import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import connectDB from '../config/database.js';
@@ -10,17 +12,12 @@ import LeaveBalance from '../models/LeaveBalance.js';
 import Payroll from '../models/Payroll.js';
 import Notification from '../models/Notification.js';
 
-
-
-
 dotenv.config();
 
-// Helper function to generate avatar URL
-const generateAvatar = (name) => {
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&size=128`;
-};
+const generateAvatar = (name) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&size=128`;
 
-const seedDatabase = async () => {
+export async function seedDatabase() {
   try {
     await connectDB();
 
@@ -155,8 +152,8 @@ const seedDatabase = async () => {
 
     console.log('Creating leave balances...');
     // Create leave balances for all employees (unlimited)
-    const leaveBalances = await LeaveBalance.create(
-      employees.map(emp => ({
+    await LeaveBalance.create(
+      employees.map((emp) => ({
         employeeId: emp._id,
         balances: [
           { type: 'Annual', total: 999, used: Math.floor(Math.random() * 5), pending: 0 },
@@ -176,13 +173,13 @@ const seedDatabase = async () => {
       for (let i = 30; i >= 1; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
-        
+
         // Skip weekends
         if (date.getDay() === 0 || date.getDay() === 6) continue;
 
         const random = Math.random();
         let status = 'Present';
-        
+
         if (random < 0.05) {
           status = 'Absent';
         } else if (random < 0.08) {
@@ -214,10 +211,10 @@ const seedDatabase = async () => {
     // Create some leave requests
     const futureDate1 = new Date(today);
     futureDate1.setDate(futureDate1.getDate() + 5);
-    
+
     const futureDate2 = new Date(today);
     futureDate2.setDate(futureDate2.getDate() + 10);
-    
+
     const futureDate3 = new Date(today);
     futureDate3.setDate(futureDate3.getDate() + 12);
 
@@ -270,11 +267,36 @@ const seedDatabase = async () => {
     console.log('Employee: employee@hrms.com / password123');
     console.log('\nAll accounts have MFA disabled for easier testing.');
 
-    process.exit(0);
+    // NOTE: do NOT call process.exit here when this function is imported.
+    // The caller (below) will handle exiting when the file is executed directly.
+    return;
   } catch (error) {
-    console.error('Error seeding database:', error);
-    process.exit(1);
+    // rethrow to let caller decide how to exit/handle errors
+    throw error;
   }
-};
+}
 
-seedDatabase();
+// ESM-safe direct-execution check
+const __filename = fileURLToPath(import.meta.url);
+const isExecutedDirectly = process.argv && process.argv[1] === __filename;
+
+// export the seeder so other modules can import and call it if needed
+export default seedDatabase;
+
+if (isExecutedDirectly) {
+  if (process.env.NODE_ENV === 'production' || process.env.SKIP_SEED === 'true') {
+    console.log('Skipping DB seed (production or SKIP_SEED set).');
+    process.exit(0);
+  }
+
+  // Run seeding and properly exit process with correct code
+  seedDatabase()
+    .then(() => {
+      console.log('Seeding finished successfully.');
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error('Seeding failed:', err);
+      process.exit(1);
+    });
+}
