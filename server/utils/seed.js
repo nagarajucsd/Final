@@ -243,21 +243,17 @@ export async function seedDatabase() {
 
     console.log('Creating notifications...');
     // Create some notifications
-    await Notification.create([
-      {
-        userId: adminUser._id,
-        title: 'System Update',
-        message: 'The HRMS system has been successfully configured.',
-        read: false
-      },
-      {
-        userId: employeeUser._id,
-        title: 'Welcome',
-        message: 'Welcome to the HR Management System!',
-        read: false,
-        link: 'Dashboard'
-      }
-    ]);
+    await Notification.updateOne(
+  { userId: adminUser._id, title: 'System Update', message: 'The HRMS system has been successfully configured.' },
+  { $setOnInsert: { userId: adminUser._id, title: 'System Update', message: 'The HRMS system has been successfully configured.', read: false, createdAt: new Date() } },
+  { upsert: true }
+);
+
+await Notification.updateOne(
+  { userId: employeeUser._id, title: 'Welcome', message: 'Welcome to the HR Management System!' },
+  { $setOnInsert: { userId: employeeUser._id, title: 'Welcome', message: 'Welcome to the HR Management System!', read: false, link: 'Dashboard', createdAt: new Date() } },
+  { upsert: true }
+);
 
     console.log('✅ Database seeded successfully!');
     console.log('\nTest Accounts:');
