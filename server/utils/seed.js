@@ -10,11 +10,7 @@ import LeaveBalance from '../models/LeaveBalance.js';
 import Payroll from '../models/Payroll.js';
 import Notification from '../models/Notification.js';
 
-if (process.env.NODE_ENV === 'production' || process.env.SKIP_SEED === 'true') {
-  console.log('Skipping DB seed (production or SKIP_SEED set).');
-  // If this is run as a standalone script, exit; otherwise just export nothing.
-  if (require.main === module) process.exit(0);
-} 
+
 
 
 dotenv.config();
