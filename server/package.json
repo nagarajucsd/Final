@@ -5,7 +5,7 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "TZ='Asia/Kolkata' node server.js",
     "dev": "node --watch server.js",
     "seed": "node utils/seed.js",
     "clear": "node utils/clear.js"
